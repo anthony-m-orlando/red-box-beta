@@ -1,10 +1,8 @@
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
 import { CharacterProvider } from './contexts/CharacterContext';
-import { AdventureProvider } from './contexts/AdventureContext';
 import HomePage from './components/layout/HomePage';
 import CharacterCreator from './components/character/CharacterCreator';
-import AdventureScreen from './components/adventure/AdventureScreen';
 import './styles/global.css';
 
 /**
@@ -14,26 +12,22 @@ import './styles/global.css';
 function App() {
   return (
     <CharacterProvider>
-      <AdventureProvider>
-        <Router>
-          <Routes>
-            <Route path="/" element={<HomePage />} />
-            
-            {/* Character Creation */}
-            <Route path="/character/create" element={<CharacterCreator />} />
-            
-            {/* Adventure */}
-            <Route path="/adventure" element={<AdventureScreen />} />
-            
-            {/* Placeholder routes - will be implemented in future phases */}
-            <Route path="/tools/dice" element={<PlaceholderPage title="Dice Roller" />} />
-            <Route path="/reference" element={<PlaceholderPage title="Reference Library" />} />
-            
-            {/* 404 Not Found */}
-            <Route path="*" element={<NotFoundPage />} />
-          </Routes>
-        </Router>
-      </AdventureProvider>
+      <Router>
+        <Routes>
+          <Route path="/" element={<HomePage />} />
+          
+          {/* Character Creation */}
+          <Route path="/character/create" element={<CharacterCreator />} />
+          
+          {/* Placeholder routes - will be implemented in future phases */}
+          <Route path="/adventure" element={<PlaceholderPage title="Adventure" />} />
+          <Route path="/tools/dice" element={<PlaceholderPage title="Dice Roller" />} />
+          <Route path="/reference" element={<PlaceholderPage title="Reference Library" />} />
+          
+          {/* 404 Not Found */}
+          <Route path="*" element={<NotFoundPage />} />
+        </Routes>
+      </Router>
     </CharacterProvider>
   );
 }
