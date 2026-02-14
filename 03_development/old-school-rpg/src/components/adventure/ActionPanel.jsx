@@ -2,8 +2,10 @@ import React from 'react';
 import { Sword, Scroll, Package, ArrowRight } from 'lucide-react';
 import { useCharacter } from '../../contexts/CharacterContext';
 import { useAdventure } from '../../contexts/AdventureContext';
+import { getTutorialMonster } from '../../data/tutorialAdventure';
 import Button from '../common/Button';
 import PaperContainer from '../common/PaperContainer';
+import CombatUI from '../combat/CombatUI';
 import './ActionPanel.css';
 
 /**
@@ -81,16 +83,9 @@ export function ActionPanel() {
         
         <div className="section-divider"></div>
         
-        {/* Combat Section (placeholder) */}
+        {/* Combat Section */}
         {adventure.adventure.inCombat ? (
-          <div className="combat-section">
-            <h4>⚔️ Combat!</h4>
-            <p>Combat system coming in next update...</p>
-            <p className="flavor-text">
-              For now, exploring the dungeon and viewing the map demonstrates
-              the core adventure mechanics.
-            </p>
-          </div>
+          <CombatUI enemy={getTutorialMonster(adventure.adventure.currentEnemy)} />
         ) : (
           <>
             {/* Available Actions */}
