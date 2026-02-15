@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCharacter } from '../../contexts/CharacterContext';
 import AbilityRoller from './AbilityRoller';
@@ -17,9 +17,23 @@ import './CharacterCreator.css';
  * 5. Finalize & Name - Coming next
  */
 export function CharacterCreator() {
-  const { character } = useCharacter();
+  const { character, resetCharacter } = useCharacter();
   const navigate = useNavigate();
   const currentStep = character.creationStep;
+  const [hasCheckedReset, setHasCheckedReset] = useState(false);
+
+  // Reset character when component mounts if we're creating a new character
+  useEffect(() => {
+    if (!hasCheckedReset) {
+      // Check if we entered this page with intent to create NEW character
+      // If character is already created (isCreated = true), reset it
+      if (character.isCreated) {
+        console.log('CharacterCreator: Resetting completed character for new creation');
+        resetCharacter();
+      }
+      setHasCheckedReset(true);
+    }
+  }, [character.isCreated, hasCheckedReset, resetCharacter]);
 
   // Progress indicator
   const steps = [

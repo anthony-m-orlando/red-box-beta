@@ -25,7 +25,80 @@
   color: var(--ink-brown);
   font-size: 1.125rem;
   max-width: 600px;
-  margin: 0 auto;
+  margin: 0 auto var(--space-md);
+}
+
+/* Debug Toggle */
+.debug-toggle {
+  background: transparent;
+  border: 2px dashed var(--border-dark);
+  border-radius: var(--radius-sm);
+  padding: var(--space-xs) var(--space-md);
+  margin-top: var(--space-md);
+  font-family: var(--font-body);
+  font-size: 0.875rem;
+  color: var(--ink-brown);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.debug-toggle:hover {
+  background-color: var(--paper-aged);
+  border-style: solid;
+  color: var(--ink-black);
+}
+
+/* Debug Mode Notice */
+.debug-mode-notice {
+  text-align: center;
+  background-color: rgba(139, 38, 53, 0.1);
+  border: 2px solid var(--ink-red);
+  border-radius: var(--radius-md);
+  padding: var(--space-lg);
+  margin-bottom: var(--space-xxl);
+}
+
+.debug-mode-notice h3 {
+  color: var(--ink-red);
+  margin-bottom: var(--space-sm);
+}
+
+.debug-mode-notice p {
+  color: var(--ink-brown);
+  font-style: italic;
+}
+
+/* Manual Input */
+.manual-input {
+  display: flex;
+  justify-content: center;
+  margin-bottom: var(--space-md);
+}
+
+.score-input {
+  width: 80px;
+  height: 80px;
+  font-family: var(--font-numbers);
+  font-size: 2.5rem;
+  font-weight: 700;
+  text-align: center;
+  background-color: var(--paper-cream);
+  border: 3px solid var(--border-dark);
+  border-radius: var(--radius-sm);
+  color: var(--ink-black);
+  transition: all var(--transition-fast);
+}
+
+.score-input:focus {
+  outline: none;
+  border-color: var(--ink-blue);
+  box-shadow: 0 0 0 3px rgba(44, 74, 124, 0.1);
+}
+
+.score-input::-webkit-inner-spin-button,
+.score-input::-webkit-outer-spin-button {
+  opacity: 1;
+  height: 40px;
 }
 
 /* ========================================

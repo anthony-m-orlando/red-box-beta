@@ -4,6 +4,7 @@ import { CharacterProvider } from './contexts/CharacterContext';
 import { AdventureProvider } from './contexts/AdventureContext';
 import HomePage from './components/layout/HomePage';
 import CharacterCreator from './components/character/CharacterCreator';
+import CharacterManager from './components/character/CharacterManager';
 import AdventureScreen from './components/adventure/AdventureScreen';
 import './styles/global.css';
 
@@ -19,8 +20,9 @@ function App() {
           <Routes>
             <Route path="/" element={<HomePage />} />
             
-            {/* Character Creation */}
+            {/* Character Creation & Management */}
             <Route path="/character/create" element={<CharacterCreator />} />
+            <Route path="/character/manage" element={<CharacterManager />} />
             
             {/* Adventure */}
             <Route path="/adventure" element={<AdventureScreen />} />

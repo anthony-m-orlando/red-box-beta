@@ -1,6 +1,6 @@
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Swords, BookOpen, Dices, Scroll } from 'lucide-react';
+import { Swords, BookOpen, Dices, Scroll, Users } from 'lucide-react';
 import Button from '../common/Button';
 import './HomePage.css';
 import dragonCover from '../../assets/images/dragon-cover.png';
@@ -18,8 +18,20 @@ export const HomePage = () => {
       icon: <Swords size={48} />,
       title: 'Create New Character',
       description: 'Roll dice, choose your class, and embark on adventure',
-      action: () => navigate('/character/create'),
+      action: () => {
+        // Clear any existing character before creating new one
+        localStorage.removeItem('rpg-character');
+        navigate('/character/create');
+      },
       color: 'var(--ink-red)'
+    },
+    {
+      id: 'manage-characters',
+      icon: <Users size={48} />,
+      title: 'Manage Characters',
+      description: 'View, import, export, and switch between heroes',
+      action: () => navigate('/character/manage'),
+      color: 'var(--ink-brown)'
     },
     {
       id: 'continue',

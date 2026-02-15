@@ -15,6 +15,15 @@ export function AbilityRoller() {
   const { setAbilities } = useCharacter();
   const [rolls, setRolls] = useState(null);
   const [isRolling, setIsRolling] = useState(false);
+  const [debugMode, setDebugMode] = useState(false);
+  const [manualScores, setManualScores] = useState({
+    strength: 10,
+    intelligence: 10,
+    wisdom: 10,
+    dexterity: 10,
+    constitution: 10,
+    charisma: 10
+  });
 
   const abilities = [
     { key: 'strength', label: 'Strength', description: 'Melee combat, damage' },
@@ -50,11 +59,26 @@ export function AbilityRoller() {
   };
 
   const handleConfirm = () => {
-    const abilityScores = {};
-    Object.keys(rolls).forEach(key => {
-      abilityScores[key] = rolls[key].total;
-    });
-    setAbilities(abilityScores);
+    if (debugMode) {
+      // Use manually set scores
+      setAbilities(manualScores);
+    } else {
+      // Use rolled scores
+      const abilityScores = {};
+      Object.keys(rolls).forEach(key => {
+        abilityScores[key] = rolls[key].total;
+      });
+      setAbilities(abilityScores);
+    }
+  };
+
+  const handleManualScoreChange = (ability, value) => {
+    const numValue = parseInt(value) || 3;
+    const clampedValue = Math.max(3, Math.min(18, numValue));
+    setManualScores(prev => ({
+      ...prev,
+      [ability]: clampedValue
+    }));
   };
 
   const allRolled = rolls && Object.keys(rolls).length === 6;
@@ -66,9 +90,18 @@ export function AbilityRoller() {
         <p className="flavor-text">
           Roll 3d6 for each of your six ability scores. These numbers define your character's strengths and weaknesses.
         </p>
+        
+        {/* Debug Mode Toggle */}
+        <button
+          className="debug-toggle"
+          onClick={() => setDebugMode(!debugMode)}
+          title="Enable manual ability score entry for testing"
+        >
+          {debugMode ? '🎲 Switch to Dice Rolling' : '⚙️ Enable Debug Mode'}
+        </button>
       </div>
 
-      {!rolls && (
+      {!rolls && !debugMode && (
         <div className="initial-roll-section">
           <PaperContainer variant="aged" padding="lg">
             <div className="roll-prompt">
@@ -92,7 +125,63 @@ export function AbilityRoller() {
         </div>
       )}
 
-      {rolls && (
+      {debugMode && (
+        <>
+          <div className="debug-mode-notice">
+            <h3>⚙️ Debug Mode: Manual Ability Entry</h3>
+            <p>Enter ability scores between 3 and 18 for testing purposes.</p>
+          </div>
+
+          <div className="abilities-grid">
+            {abilities.map(ability => {
+              const score = manualScores[ability.key];
+              const modifier = calculateModifier(score);
+              const modifierText = modifier >= 0 ? `+${modifier}` : modifier;
+
+              return (
+                <PaperContainer key={ability.key} className="ability-card">
+                  <div className="ability-header">
+                    <h3>{ability.label}</h3>
+                  </div>
+
+                  <div className="ability-roll">
+                    <div className="manual-input">
+                      <input
+                        type="number"
+                        min="3"
+                        max="18"
+                        value={score}
+                        onChange={(e) => handleManualScoreChange(ability.key, e.target.value)}
+                        className="score-input"
+                      />
+                    </div>
+
+                    <div className={`ability-modifier ${modifier >= 0 ? 'positive' : 'negative'}`}>
+                      <span className="modifier-label">Modifier:</span>
+                      <span className="number modifier-value">{modifierText}</span>
+                    </div>
+                  </div>
+
+                  <p className="ability-description">{ability.description}</p>
+                </PaperContainer>
+              );
+            })}
+          </div>
+
+          <div className="roller-actions">
+            <Button
+              variant="primary"
+              size="lg"
+              icon={<ArrowRight />}
+              onClick={handleConfirm}
+            >
+              Confirm & Choose Class
+            </Button>
+          </div>
+        </>
+      )}
+
+      {rolls && !debugMode && (
         <>
           <div className="abilities-grid">
             {abilities.map(ability => {

@@ -211,9 +211,11 @@ export function CharacterProvider({ children }) {
   
   // Auto-save to localStorage on state changes
   useEffect(() => {
+    // Only save if character creation is complete
     if (state.isCreated) {
       try {
         localStorage.setItem('rpg-character', JSON.stringify(state));
+        console.log('Character auto-saved:', state.name);
       } catch (error) {
         console.error('Failed to save character:', error);
       }
@@ -226,7 +228,10 @@ export function CharacterProvider({ children }) {
       const saved = localStorage.getItem('rpg-character');
       if (saved) {
         const character = JSON.parse(saved);
+        console.log('Loading saved character:', character.name, '- isCreated:', character.isCreated);
         dispatch({ type: 'LOAD_CHARACTER', payload: character });
+      } else {
+        console.log('No saved character found');
       }
     } catch (error) {
       console.error('Failed to load character:', error);

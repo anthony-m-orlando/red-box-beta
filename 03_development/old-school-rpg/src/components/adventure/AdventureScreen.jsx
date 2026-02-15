@@ -162,8 +162,19 @@ function VictoryScreen() {
  */
 function DefeatScreen() {
   const navigate = useNavigate();
-  const { character } = useCharacter();
+  const { character, heal, updateHP } = useCharacter();
   const { resetAdventure } = useAdventure();
+  
+  const handleTryAgain = () => {
+    // Reset adventure to beginning
+    resetAdventure();
+    
+    // Restore character to full HP
+    updateHP(character.hp.max, character.hp.max);
+    
+    // Stay on adventure screen (will restart at entrance)
+    window.location.reload(); // Force reload to reset adventure state
+  };
   
   return (
     <div className="adventure-screen defeat-screen">
@@ -181,14 +192,21 @@ function DefeatScreen() {
           </p>
           <p>
             But fear not! In the world of D&D, death is not always the end.
-            You can try again with a new character, or even attempt to resurrect this one!
+            You can try again with {character.name}, or create a new character!
           </p>
         </div>
         
         <div className="defeat-actions">
           <Button
-            variant="danger"
+            variant="primary"
             size="lg"
+            onClick={handleTryAgain}
+          >
+            Try Again (Restore {character.name})
+          </Button>
+          
+          <Button
+            variant="danger"
             onClick={() => {
               resetAdventure();
               navigate('/character/create');
