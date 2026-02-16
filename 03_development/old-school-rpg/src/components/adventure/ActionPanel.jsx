@@ -1,20 +1,23 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Sword, Scroll, Package, ArrowRight } from 'lucide-react';
 import { useCharacter } from '../../contexts/CharacterContext';
 import { useAdventure } from '../../contexts/AdventureContext';
 import { getTutorialMonster } from '../../data/tutorialAdventure';
+import { applyItemEffect } from '../../utils/items';
 import Button from '../common/Button';
 import PaperContainer from '../common/PaperContainer';
 import CombatUI from '../combat/CombatUI';
+import ItemMenu from './ItemMenu';
 import './ActionPanel.css';
 
 /**
  * ActionPanel - Shows current room status and available actions
  */
 export function ActionPanel() {
-  const { character } = useCharacter();
+  const { character, heal, removeItem } = useCharacter();
   const adventure = useAdventure();
-  const { getCurrentRoom, enterRoom } = adventure;
+  const { getCurrentRoom, enterRoom, addNarration } = adventure;
+  const [showItemMenu, setShowItemMenu] = useState(false);
   
   const currentRoom = getCurrentRoom();
   // Show all exits from the current room (player can see doors/passages)
@@ -26,6 +29,49 @@ export function ActionPanel() {
     !adventure.adventure.defeatedMonsters.includes(mId)
   );
   const roomCleared = monstersAlive.length === 0;
+  
+  // Handle item usage
+  const handleUseItem = (item) => {
+    console.log('Using item:', item);
+    
+    // Close item menu
+    setShowItemMenu(false);
+    
+    // Apply item effect
+    const result = applyItemEffect(item, character, 'exploration');
+    
+    // Add narration
+    addNarration('system_message', `You use ${item.name}.`);
+    addNarration('dm_note', result.message);
+    
+    // Apply effects based on type
+    switch (result.type) {
+      case 'healing':
+        heal(result.healAmount);
+        addNarration('system_message', `Restored ${result.healAmount} HP!`);
+        break;
+        
+      case 'light':
+        // Light effects are narrative only (for now)
+        break;
+        
+      case 'utility':
+      default:
+        // Utility effects are narrative only
+        break;
+    }
+    
+    // Remove consumed items
+    if (result.consumed) {
+      // Decrease quantity or remove item
+      if (item.quantity !== undefined && item.quantity > 1) {
+        // Would need to update item quantity
+        // For now, we'll handle this in a future update
+      } else {
+        removeItem(item.id);
+      }
+    }
+  };
   
   return (
     <div className="action-panel">
@@ -149,21 +195,23 @@ export function ActionPanel() {
                   size="sm"
                   icon={<Package />}
                   fullWidth
-                  onClick={() => {
-                    adventure.dispatch({
-                      type: 'ADD_NARRATION',
-                      payload: {
-                        style: 'system_message',
-                        text: 'You check your backpack. (Item system coming soon!)'
-                      }
-                    });
-                  }}
+                  onClick={() => setShowItemMenu(true)}
                 >
                   Use Item
                 </Button>
               </div>
             </div>
           </>
+        )}
+        
+        {/* Item Menu Modal */}
+        {showItemMenu && (
+          <ItemMenu
+            character={character}
+            onUseItem={handleUseItem}
+            onClose={() => setShowItemMenu(false)}
+            context="exploration"
+          />
         )}
         
         {/* Progress */}

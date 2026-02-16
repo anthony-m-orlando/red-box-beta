@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { ArrowRight, ArrowLeft, Scale, Users, Flame } from 'lucide-react';
 import { useCharacter } from '../../contexts/CharacterContext';
+import { canCastSpells } from '../../data/spells';
 import Button from '../common/Button';
 import PaperContainer from '../common/PaperContainer';
 import './AlignmentSelector.css';
@@ -12,6 +13,8 @@ import './AlignmentSelector.css';
 export function AlignmentSelector() {
   const { character, setAlignment, goToStep } = useCharacter();
   const [selected, setSelected] = useState(null);
+  
+  const isSpellcaster = character.class && canCastSpells(character.class);
 
   const alignments = [
     {
@@ -67,6 +70,11 @@ export function AlignmentSelector() {
   const handleConfirm = () => {
     if (selected) {
       setAlignment(selected);
+      // If not a spellcaster, skip step 4 (spells) and go to step 5 (finalize)
+      if (!isSpellcaster) {
+        // setAlignment will set step to 4, but we want to skip to 5
+        setTimeout(() => goToStep(5), 0);
+      }
     }
   };
 

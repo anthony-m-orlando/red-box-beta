@@ -9,6 +9,7 @@ import {
   meetsClassRequirements,
   getStartingGold
 } from '../utils/calculations';
+import { getStartingItems } from '../utils/items';
 
 /**
  * CharacterContext - Global character state
@@ -50,9 +51,14 @@ const initialState = {
   armor: 'none',
   hasShield: false,
   
+  // Spells (for spell-casting classes)
+  spells: [], // Array of spell IDs
+  spellSlots: { 1: 0, 2: 0, 3: 0 }, // Max spell slots by level
+  spellSlotsUsed: { 1: 0, 2: 0, 3: 0 }, // Used spell slots by level
+  
   // Progress
   isCreated: false,
-  creationStep: 1 // 1: Abilities, 2: Class, 3: Alignment, 4: Equipment, 5: Finalize
+  creationStep: 1 // 1: Abilities, 2: Class, 3: Alignment, 4: Spells (if caster) / Skip to 5, 5: Finalize
 };
 
 /**
@@ -73,6 +79,7 @@ function characterReducer(state, action) {
       const ac = calculateAC(9, state.abilities.dexterity);
       const thac0 = calculateTHAC0(className, 1, state.abilities.strength);
       const gold = getStartingGold(className);
+      const startingItems = getStartingItems(className);
       
       return {
         ...state,
@@ -81,6 +88,7 @@ function characterReducer(state, action) {
         ac,
         thac0,
         gold,
+        inventory: startingItems, // Add starting items
         creationStep: 3
       };
     }
@@ -89,8 +97,42 @@ function characterReducer(state, action) {
       return {
         ...state,
         alignment: action.payload,
-        creationStep: 4  // Skip equipment, go to finalization
+        creationStep: 4  // Go to spells (or skip to 5 if non-caster)
       };
+    
+    case 'SET_SPELLS': {
+      // Set selected spells and spell slots
+      return {
+        ...state,
+        spells: action.payload, // Array of spell IDs
+        spellSlots: action.spellSlots || { 1: 1, 2: 0, 3: 0 },
+        spellSlotsUsed: { 1: 0, 2: 0, 3: 0 },
+        creationStep: 5 // Go to finalize
+      };
+    }
+    
+    case 'USE_SPELL_SLOT': {
+      const { level } = action.payload;
+      return {
+        ...state,
+        spellSlotsUsed: {
+          ...state.spellSlotsUsed,
+          [level]: Math.min(
+            state.spellSlotsUsed[level] + 1,
+            state.spellSlots[level] || 0
+          )
+        }
+      };
+    }
+    
+    case 'REST': {
+      // Reset spell slots on rest
+      return {
+        ...state,
+        spellSlotsUsed: { 1: 0, 2: 0, 3: 0 },
+        hp: { ...state.hp, current: state.hp.max } // Also restore HP
+      };
+    }
     
     case 'SET_EQUIPMENT': {
       const { armor, hasShield, inventory } = action.payload;
@@ -246,9 +288,14 @@ export function CharacterProvider({ children }) {
     setAbilities: (abilities) => dispatch({ type: 'SET_ABILITIES', payload: abilities }),
     setClass: (className) => dispatch({ type: 'SET_CLASS', payload: className }),
     setAlignment: (alignment) => dispatch({ type: 'SET_ALIGNMENT', payload: alignment }),
+    setSpells: (spellIds, spellSlots) => dispatch({ type: 'SET_SPELLS', payload: spellIds, spellSlots }),
     setEquipment: (equipment) => dispatch({ type: 'SET_EQUIPMENT', payload: equipment }),
     setName: (name) => dispatch({ type: 'SET_NAME', payload: name }),
     finalizeCharacter: () => dispatch({ type: 'FINALIZE_CHARACTER' }),
+    
+    // Spell actions
+    useSpellSlot: (level) => dispatch({ type: 'USE_SPELL_SLOT', payload: { level } }),
+    rest: () => dispatch({ type: 'REST' }),
     
     // Combat actions
     takeDamage: (damage) => dispatch({ type: 'DAMAGE', payload: damage }),

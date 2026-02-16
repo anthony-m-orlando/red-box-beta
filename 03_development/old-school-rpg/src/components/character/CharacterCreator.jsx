@@ -1,9 +1,11 @@
 import React, { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useCharacter } from '../../contexts/CharacterContext';
+import { canCastSpells } from '../../data/spells';
 import AbilityRoller from './AbilityRoller';
 import ClassSelector from './ClassSelector';
 import AlignmentSelector from './AlignmentSelector';
+import SpellSelector from './SpellSelector';
 import CharacterFinalization from './CharacterFinalization';
 import './CharacterCreator.css';
 
@@ -11,16 +13,19 @@ import './CharacterCreator.css';
  * CharacterCreator - Multi-step wizard for character creation
  * Steps:
  * 1. Roll Abilities (AbilityRoller)
- * 2. Choose Class (ClassSelector) - Coming next
- * 3. Choose Alignment - Coming next
- * 4. Select Equipment - Coming next
- * 5. Finalize & Name - Coming next
+ * 2. Choose Class (ClassSelector)
+ * 3. Choose Alignment (AlignmentSelector)
+ * 4. Select Spells (SpellSelector) - if spell-casting class
+ * 5. Finalize & Name (CharacterFinalization)
  */
 export function CharacterCreator() {
   const { character, resetCharacter } = useCharacter();
   const navigate = useNavigate();
   const currentStep = character.creationStep;
   const [hasCheckedReset, setHasCheckedReset] = useState(false);
+  
+  // Check if current class can cast spells
+  const isSpellcaster = character.class && canCastSpells(character.class);
 
   // Reset character when component mounts if we're creating a new character
   useEffect(() => {
@@ -40,7 +45,7 @@ export function CharacterCreator() {
     { number: 1, label: 'Abilities', active: currentStep >= 1, complete: currentStep > 1 },
     { number: 2, label: 'Class', active: currentStep >= 2, complete: currentStep > 2 },
     { number: 3, label: 'Alignment', active: currentStep >= 3, complete: currentStep > 3 },
-    { number: 4, label: 'Equipment', active: currentStep >= 4, complete: currentStep > 4 },
+    { number: 4, label: isSpellcaster ? 'Spells' : 'Review', active: currentStep >= 4, complete: currentStep > 4 },
     { number: 5, label: 'Finalize', active: currentStep >= 5, complete: character.isCreated }
   ];
 
@@ -71,8 +76,12 @@ export function CharacterCreator() {
         
         {currentStep === 3 && <AlignmentSelector />}
         
-        {/* Skip step 4 (equipment) for now and go straight to finalization */}
-        {currentStep >= 4 && <CharacterFinalization />}
+        {/* Step 4: Spell Selection (only for spellcasters) or skip to finalization */}
+        {currentStep === 4 && isSpellcaster && <SpellSelector />}
+        {currentStep === 4 && !isSpellcaster && <CharacterFinalization />}
+        
+        {/* Step 5: Finalization */}
+        {currentStep === 5 && <CharacterFinalization />}
       </div>
 
       {/* Back to Home Button */}

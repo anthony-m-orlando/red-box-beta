@@ -25,14 +25,17 @@ export function AdventureScreen() {
     }
   }, [character.isCreated, navigate]);
   
-  // Add initial narration
+  // Add initial narration when entering a fresh adventure
   useEffect(() => {
-    if (adventure.narrationHistory.length === 0) {
+    // Only add narration if this is a fresh start (no narration yet)
+    if (adventure.narrationHistory.length === 0 && character.isCreated) {
       const room = getCurrentRoom();
-      addNarration('room_description', room.description);
-      addNarration('system_message', 'Your adventure begins! Explore the dungeon and defeat all monsters to win.');
+      if (room) {
+        addNarration('room_description', room.description);
+        addNarration('system_message', 'Your adventure begins! Explore the dungeon and defeat all monsters to win.');
+      }
     }
-  }, []); // Empty deps - only run once on mount
+  }, [adventure.narrationHistory.length, character.isCreated]);
   
   // Check for victory or defeat
   if (adventure.isVictorious) {
@@ -166,14 +169,20 @@ function DefeatScreen() {
   const { resetAdventure } = useAdventure();
   
   const handleTryAgain = () => {
-    // Reset adventure to beginning
-    resetAdventure();
-    
-    // Restore character to full HP
+    // Restore character to full HP FIRST
     updateHP(character.hp.max, character.hp.max);
     
-    // Stay on adventure screen (will restart at entrance)
-    window.location.reload(); // Force reload to reset adventure state
+    // Small delay to ensure HP is updated in state
+    setTimeout(() => {
+      // Reset adventure to beginning
+      resetAdventure();
+      
+      // Navigate away and back to force component remount
+      navigate('/');
+      setTimeout(() => {
+        navigate('/adventure');
+      }, 100);
+    }, 100);
   };
   
   return (

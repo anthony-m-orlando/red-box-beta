@@ -1,17 +1,20 @@
 import React, { useState, useEffect } from 'react';
-import { Swords, Shield, AlertTriangle } from 'lucide-react';
+import { Swords, Shield, AlertTriangle, Sparkles } from 'lucide-react';
 import { useCharacter } from '../../contexts/CharacterContext';
 import { useAdventure } from '../../contexts/AdventureContext';
 import { rollAttack, rollDamage, rollInitiative, checkMorale, applyStrengthDamage, getStrengthAttackBonus } from '../../utils/combat';
+import { applySpellEffect, hasSpellsAvailable } from '../../utils/spells';
+import { getSpell } from '../../data/spells';
 import Button from '../common/Button';
 import PaperContainer from '../common/PaperContainer';
+import SpellMenu from './SpellMenu';
 import './CombatUI.css';
 
 /**
  * CombatUI - Turn-based combat interface
  */
 export function CombatUI({ enemy }) {
-  const { character, takeDamage, heal, addXP, updateGold } = useCharacter();
+  const { character, takeDamage, heal, addXP, updateGold, useSpellSlot } = useCharacter();
   const adventure = useAdventure();
   const { endCombat, addNarration } = adventure;
   
@@ -21,6 +24,7 @@ export function CombatUI({ enemy }) {
   const [enemyInitiative, setEnemyInitiative] = useState(0);
   const [round, setRound] = useState(1);
   const [combatLog, setCombatLog] = useState([]);
+  const [showSpellMenu, setShowSpellMenu] = useState(false);
 
   const [combatStarted, setCombatStarted] = useState(false);
 
@@ -136,6 +140,68 @@ export function CombatUI({ enemy }) {
       setCombatState('enemyTurn');
       setTimeout(handleEnemyTurn, 1000);
     }
+  };
+
+  const handleCastSpell = (spellId) => {
+    console.log('Casting spell:', spellId);
+    
+    const spell = getSpell(spellId);
+    if (!spell) {
+      console.error('Spell not found:', spellId);
+      return;
+    }
+    
+    // Close spell menu
+    setShowSpellMenu(false);
+    
+    // Determine target based on spell type
+    const spellType = spell.implementation.type;
+    const target = (spellType === 'healing' || spellType === 'buff') 
+      ? character  // Self-target for healing/buffs
+      : { hp: { current: enemyHP, max: enemy.hp.max }, ...enemy }; // Enemy for damage
+    
+    // Apply spell effect
+    const result = applySpellEffect(spell, character, target, 'combat');
+    
+    // Log spell cast
+    addLogEntry(`✨ You cast ${spell.name}!`);
+    addNarration('combat_action', `You cast ${spell.name}!`, { emphasis: true });
+    
+    // Apply effects based on type
+    switch (result.type) {
+      case 'healing':
+        heal(result.healAmount);
+        addLogEntry(`💚 ${spell.name} heals ${result.healAmount} HP!`);
+        addNarration('combat_action', `${spell.name} restores ${result.healAmount} hit points!`);
+        break;
+        
+      case 'damage':
+        setEnemyHP(result.newHP);
+        addLogEntry(`⚡ ${spell.name} deals ${result.damage} damage!`);
+        addNarration('combat_action', `${spell.name} strikes for ${result.damage} damage!`, { emphasis: true });
+        break;
+        
+      case 'buff':
+        // TODO: Apply buff to character (would need buff tracking system)
+        addLogEntry(`🛡️ ${spell.name} grants ${result.bonus > 0 ? '+' : ''}${result.bonus} ${result.stat.toUpperCase()}!`);
+        addNarration('combat_action', result.message);
+        break;
+        
+      case 'utility':
+        addLogEntry(`✨ ${result.message}`);
+        addNarration('combat_action', result.message);
+        break;
+        
+      default:
+        addLogEntry(`✨ ${result.message}`);
+        addNarration('combat_action', result.message);
+    }
+    
+    // Use spell slot
+    useSpellSlot(spell.level);
+    
+    // Enemy turn next
+    setCombatState('enemyTurn');
   };
 
   const handleEnemyTurn = () => {
@@ -282,6 +348,18 @@ export function CombatUI({ enemy }) {
                 Attack
               </Button>
               
+              {/* Cast Spell Button - only if character has spells */}
+              {character.spells && character.spells.length > 0 && hasSpellsAvailable(character) && (
+                <Button
+                  variant="primary"
+                  icon={<Sparkles />}
+                  onClick={() => setShowSpellMenu(true)}
+                  fullWidth
+                >
+                  Cast Spell
+                </Button>
+              )}
+              
               <Button
                 variant="secondary"
                 icon={<Shield />}
@@ -301,6 +379,15 @@ export function CombatUI({ enemy }) {
               </Button>
             </div>
           </div>
+        )}
+        
+        {/* Spell Menu Modal */}
+        {showSpellMenu && (
+          <SpellMenu
+            character={character}
+            onCastSpell={handleCastSpell}
+            onClose={() => setShowSpellMenu(false)}
+          />
         )}
 
         {combatState === 'enemyTurn' && (
