@@ -242,6 +242,70 @@ export function getMovementRate(encumbrance, baseMovement = 120) {
   return 0; // Over-encumbered, cannot move
 }
 
+/**
+ * XP required for each level by class
+ * Basic D&D progression tables
+ */
+const xpTables = {
+  'fighter': [0, 2000, 4000, 8000, 16000, 32000, 64000, 120000, 240000, 360000],
+  'cleric': [0, 1500, 3000, 6000, 12000, 25000, 50000, 100000, 200000, 300000],
+  'magic-user': [0, 2500, 5000, 10000, 20000, 40000, 80000, 150000, 300000, 450000],
+  'thief': [0, 1200, 2400, 4800, 9600, 20000, 40000, 80000, 160000, 280000],
+  'dwarf': [0, 2200, 4400, 8800, 17000, 35000, 70000, 140000, 270000, 400000],
+  'elf': [0, 4000, 8000, 16000, 32000, 64000, 120000, 250000, 400000, 600000],
+  'halfling': [0, 2000, 4000, 8000, 16000, 32000, 64000, 120000, 240000, 360000]
+};
+
+/**
+ * Get XP required for next level
+ * @param {string} className - Character class
+ * @param {number} currentLevel - Current level
+ * @returns {number} - XP required for next level (or Infinity if max level)
+ */
+export function getXPForNextLevel(className, currentLevel) {
+  const table = xpTables[className.toLowerCase()];
+  if (!table) return Infinity;
+  
+  const nextLevel = currentLevel + 1;
+  if (nextLevel > table.length) return Infinity; // Max level
+  
+  return table[nextLevel - 1]; // Arrays are 0-indexed, levels are 1-indexed
+}
+
+/**
+ * Check if character should level up
+ * @param {string} className - Character class
+ * @param {number} currentLevel - Current level
+ * @param {number} currentXP - Current XP
+ * @returns {boolean} - True if should level up
+ */
+export function shouldLevelUp(className, currentLevel, currentXP) {
+  const xpNeeded = getXPForNextLevel(className, currentLevel);
+  return currentXP >= xpNeeded && xpNeeded !== Infinity;
+}
+
+/**
+ * Get new level based on XP
+ * @param {string} className - Character class
+ * @param {number} currentXP - Current XP
+ * @returns {number} - New level
+ */
+export function getLevelFromXP(className, currentXP) {
+  const table = xpTables[className.toLowerCase()];
+  if (!table) return 1;
+  
+  let level = 1;
+  for (let i = 0; i < table.length; i++) {
+    if (currentXP >= table[i]) {
+      level = i + 1;
+    } else {
+      break;
+    }
+  }
+  
+  return Math.min(level, table.length); // Cap at max level
+}
+
 export default {
   calculateModifier,
   calculateMaxHP,
@@ -254,5 +318,8 @@ export default {
   meetsClassRequirements,
   getStartingGold,
   calculateEncumbrance,
-  getMovementRate
+  getMovementRate,
+  getXPForNextLevel,
+  shouldLevelUp,
+  getLevelFromXP
 };

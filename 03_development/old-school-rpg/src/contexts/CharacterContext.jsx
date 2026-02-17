@@ -126,11 +126,15 @@ function characterReducer(state, action) {
     }
     
     case 'REST': {
-      // Reset spell slots on rest
+      // Rest heals 4 HP + Constitution modifier
+      const conMod = calculateModifier(state.abilities.constitution);
+      const healAmount = 4 + conMod;
+      const newHP = Math.min(state.hp.current + healAmount, state.hp.max);
+      
       return {
         ...state,
-        spellSlotsUsed: { 1: 0, 2: 0, 3: 0 },
-        hp: { ...state.hp, current: state.hp.max } // Also restore HP
+        hp: { ...state.hp, current: newHP },
+        spellSlotsUsed: { 1: 0, 2: 0, 3: 0 } // Also restore spell slots
       };
     }
     

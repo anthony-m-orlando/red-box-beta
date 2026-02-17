@@ -41,7 +41,10 @@ const initialState = {
   isDefeated: false,
   
   // Tutorial flags
-  tutorialComplete: false
+  tutorialComplete: false,
+  
+  // Rest tracking
+  hasRested: false, // Can only rest once per adventure
 };
 
 /**
@@ -174,6 +177,13 @@ function adventureReducer(state, action) {
       };
     }
     
+    case 'REST': {
+      return {
+        ...state,
+        hasRested: true
+      };
+    }
+    
     case 'RESET_ADVENTURE': {
       return initialState;
     }
@@ -302,6 +312,7 @@ export function AdventureProvider({ children }) {
     setVictory: () => dispatch({ type: 'SET_VICTORY' }),
     setDefeat: () => dispatch({ type: 'SET_DEFEAT' }),
     resetAdventure: () => dispatch({ type: 'RESET_ADVENTURE' }),
+    rest: () => dispatch({ type: 'REST' }),
     
     // Helpers
     getCurrentRoom: () => getTutorialRoom(state.currentRoomId),

@@ -282,16 +282,14 @@ function CharacterCard({ character, onLoad, onDelete, onExport, isCurrent }) {
             Export
           </Button>
 
-          {!isCurrent && (
-            <Button
-              variant="danger"
-              size="sm"
-              icon={<Trash2 />}
-              onClick={onDelete}
-            >
-              Delete
-            </Button>
-          )}
+          <Button
+            variant="danger"
+            size="sm"
+            icon={<Trash2 />}
+            onClick={onDelete}
+          >
+            Delete
+          </Button>
         </div>
       </div>
     </PaperContainer>

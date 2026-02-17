@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Home, Swords } from 'lucide-react';
 import { useCharacter } from '../../contexts/CharacterContext';
@@ -17,6 +17,7 @@ export function AdventureScreen() {
   const navigate = useNavigate();
   const { character } = useCharacter();
   const { adventure, getCurrentRoom, addNarration } = useAdventure();
+  const hasInitialized = useRef(false);
   
   // Check if player has a character
   useEffect(() => {
@@ -25,17 +26,18 @@ export function AdventureScreen() {
     }
   }, [character.isCreated, navigate]);
   
-  // Add initial narration when entering a fresh adventure
+  // Add initial narration ONCE when entering a fresh adventure
   useEffect(() => {
-    // Only add narration if this is a fresh start (no narration yet)
-    if (adventure.narrationHistory.length === 0 && character.isCreated) {
+    // Only run if not already initialized and no narration exists
+    if (!hasInitialized.current && adventure.narrationHistory.length === 0 && character.isCreated) {
       const room = getCurrentRoom();
       if (room) {
         addNarration('room_description', room.description);
         addNarration('system_message', 'Your adventure begins! Explore the dungeon and defeat all monsters to win.');
+        hasInitialized.current = true;
       }
     }
-  }, [adventure.narrationHistory.length, character.isCreated]);
+  }, []); // Empty deps - only run once on mount
   
   // Check for victory or defeat
   if (adventure.isVictorious) {
@@ -84,14 +86,24 @@ export function AdventureScreen() {
  */
 function VictoryScreen() {
   const navigate = useNavigate();
-  const { character, addXP } = useCharacter();
+  const { character, addXP, exportCharacter } = useCharacter();
   const { adventure, resetAdventure } = useAdventure();
+  const [saved, setSaved] = useState(false);
   
-  // Award XP for defeated monsters
-  useEffect(() => {
-    const totalXP = 65; // 5 (goblin) + 10 (snake) + 50 (rust monster)
-    addXP(totalXP);
-  }, []);
+  // Don't award XP again (already awarded in combat)
+  // Just display final stats
+  
+  const handleSaveCharacter = () => {
+    // Export character to file
+    exportCharacter();
+    setSaved(true);
+  };
+  
+  const handlePlayAgain = () => {
+    // Reset adventure but keep character progress
+    resetAdventure();
+    navigate('/adventure');
+  };
   
   return (
     <div className="adventure-screen victory-screen">
@@ -115,12 +127,20 @@ function VictoryScreen() {
               <span className="stat-value number">{adventure.visitedRooms.length}</span>
             </div>
             <div className="stat-item">
-              <span className="stat-label">XP Earned:</span>
-              <span className="stat-value number">65</span>
+              <span className="stat-label">Final HP:</span>
+              <span className="stat-value number">{character.hp.current}/{character.hp.max}</span>
             </div>
             <div className="stat-item">
               <span className="stat-label">Gold Collected:</span>
-              <span className="stat-value number">60</span>
+              <span className="stat-value number">{character.gold} GP</span>
+            </div>
+          </div>
+          
+          <div className="character-progress">
+            <h3>{character.name} - Level {character.level} {character.class}</h3>
+            <div className="progress-detail">
+              <span>Experience: {character.xp} XP</span>
+              <span>Items: {character.inventory.length}</span>
             </div>
           </div>
         </div>
@@ -131,8 +151,8 @@ function VictoryScreen() {
             You've learned the basics of dungeon exploration, combat, and treasure hunting.
           </p>
           <p>
-            This concludes the tutorial adventure. In a full version of the game,
-            you would continue to "Bargle Wanted" and other exciting quests!
+            Your character has been saved with all XP, gold, and items earned during this adventure.
+            You can continue adventuring or save your character for future quests!
           </p>
         </div>
         
@@ -140,6 +160,21 @@ function VictoryScreen() {
           <Button
             variant="primary"
             size="lg"
+            onClick={handleSaveCharacter}
+            disabled={saved}
+          >
+            {saved ? '✓ Character Saved!' : 'Save Character to File'}
+          </Button>
+          
+          <Button
+            variant="primary"
+            onClick={handlePlayAgain}
+          >
+            Play Tutorial Again
+          </Button>
+          
+          <Button
+            variant="secondary"
             onClick={() => {
               resetAdventure();
               navigate('/character/create');
@@ -149,12 +184,18 @@ function VictoryScreen() {
           </Button>
           
           <Button
-            variant="secondary"
+            variant="ghost"
             onClick={() => navigate('/')}
           >
             Return to Home
           </Button>
         </div>
+        
+        {saved && (
+          <div className="save-confirmation">
+            <p>✓ Character exported successfully! Your progress has been saved.</p>
+          </div>
+        )}
       </div>
     </div>
   );

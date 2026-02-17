@@ -31,25 +31,7 @@ export function MapDisplay() {
             viewBox={`${minX * 60 - 10} ${minY * 60 - 10} ${(maxX - minX + 1) * 60 + 20} ${(maxY - minY + 1) * 60 + 20}`}
             className="map-svg"
           >
-            {/* Grid background (graph paper) */}
-            <defs>
-              <pattern id="grid" width="20" height="20" patternUnits="userSpaceOnUse">
-                <path
-                  d="M 20 0 L 0 0 0 20"
-                  fill="none"
-                  stroke="rgba(42, 35, 28, 0.15)"
-                  strokeWidth="1"
-                />
-              </pattern>
-            </defs>
-            
-            <rect
-              x={minX * 60 - 10}
-              y={minY * 60 - 10}
-              width={(maxX - minX + 1) * 60 + 20}
-              height={(maxY - minY + 1) * 60 + 20}
-              fill="url(#grid)"
-            />
+            {/* Grid provided by PaperContainer variant="graph" CSS */}
             
             {/* Corridors/Connections */}
             {Object.values(allRooms).map(room => {

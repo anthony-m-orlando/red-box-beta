@@ -4,6 +4,7 @@ import { useCharacter } from '../../contexts/CharacterContext';
 import { useAdventure } from '../../contexts/AdventureContext';
 import { rollAttack, rollDamage, rollInitiative, checkMorale, applyStrengthDamage, getStrengthAttackBonus } from '../../utils/combat';
 import { applySpellEffect, hasSpellsAvailable } from '../../utils/spells';
+import { generateTreasure, formatTreasureMessage } from '../../utils/treasure';
 import { getSpell } from '../../data/spells';
 import Button from '../common/Button';
 import PaperContainer from '../common/PaperContainer';
@@ -14,7 +15,7 @@ import './CombatUI.css';
  * CombatUI - Turn-based combat interface
  */
 export function CombatUI({ enemy }) {
-  const { character, takeDamage, heal, addXP, updateGold, useSpellSlot } = useCharacter();
+  const { character, takeDamage, heal, addXP, updateGold, useSpellSlot, addItem } = useCharacter();
   const adventure = useAdventure();
   const { endCombat, addNarration } = adventure;
   
@@ -276,9 +277,32 @@ export function CombatUI({ enemy }) {
     addXP(enemy.xp);
     addLogEntry(`You gain ${enemy.xp} XP!`);
     
+    // Generate treasure
+    const treasure = generateTreasure(enemy.id, enemy.type);
+    
+    // Award gold
+    if (treasure.gold > 0) {
+      updateGold(treasure.gold);
+      addLogEntry(`💰 Found ${treasure.gold} gold pieces!`);
+    }
+    
+    // Award items
+    treasure.items.forEach(item => {
+      addItem(item);
+      addLogEntry(`📦 Found: ${item.name}!`);
+    });
+    
     // Narration
     addNarration('system_message', enemy.defeatedText || `The ${enemy.name} falls defeated!`, { emphasis: true });
     addNarration('system_message', `You gain ${enemy.xp} experience points!`);
+    
+    // Treasure narration
+    if (treasure.gold > 0 || treasure.items.length > 0) {
+      const treasureMsg = formatTreasureMessage(treasure);
+      addNarration('dm_note', `You search the body and find:\n${treasureMsg}`);
+    } else {
+      addNarration('dm_note', 'You search the body but find nothing of value.');
+    }
     
     // End combat after delay
     setTimeout(() => {
