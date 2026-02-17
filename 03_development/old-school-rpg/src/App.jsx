@@ -6,6 +6,8 @@ import HomePage from './components/layout/HomePage';
 import CharacterCreator from './components/character/CharacterCreator';
 import CharacterManager from './components/character/CharacterManager';
 import AdventureScreen from './components/adventure/AdventureScreen';
+import DiceRoller from './components/tools/DiceRoller';
+import Bestiary from './components/tools/Bestiary';
 import './styles/global.css';
 
 /**
@@ -26,6 +28,10 @@ function App() {
             
             {/* Adventure */}
             <Route path="/adventure" element={<AdventureScreen />} />
+            
+            {/* Tools */}
+            <Route path="/tools/dice" element={<DiceRoller />} />
+            <Route path="/reference" element={<Bestiary />} />
             
             {/* Placeholder routes - will be implemented in future phases */}
             <Route path="/tools/dice" element={<PlaceholderPage title="Dice Roller" />} />

@@ -221,6 +221,23 @@ function characterReducer(state, action) {
       };
     }
     
+    case 'DECREMENT_ITEM_QUANTITY': {
+      const { itemId, amount = 1 } = action.payload;
+      return {
+        ...state,
+        inventory: state.inventory.map(item => {
+          if (item.id === itemId) {
+            const newQuantity = (item.quantity || 1) - amount;
+            if (newQuantity <= 0) {
+              return null; // Mark for removal
+            }
+            return { ...item, quantity: newQuantity };
+          }
+          return item;
+        }).filter(Boolean) // Remove null items
+      };
+    }
+    
     case 'UPDATE_GOLD': {
       const amount = action.payload;
       return {
@@ -309,6 +326,10 @@ export function CharacterProvider({ children }) {
     // Inventory
     addItem: (item) => dispatch({ type: 'ADD_ITEM', payload: item }),
     removeItem: (itemId) => dispatch({ type: 'REMOVE_ITEM', payload: itemId }),
+    decrementItemQuantity: (itemId, amount = 1) => dispatch({ 
+      type: 'DECREMENT_ITEM_QUANTITY', 
+      payload: { itemId, amount } 
+    }),
     updateGold: (amount) => dispatch({ type: 'UPDATE_GOLD', payload: amount }),
     
     // Experience

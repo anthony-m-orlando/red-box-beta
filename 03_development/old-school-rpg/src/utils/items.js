@@ -264,14 +264,15 @@ export function getStartingItems(className) {
       usableIn: ['exploration']
     },
     {
-      id: 'rations',
-      name: 'Iron Rations (1 week)',
+      id: 'ration',
+      name: 'Iron Ration',
       type: 'consumable',
-      weight: 7,
-      quantity: 1,
+      weight: 1,
+      quantity: 7, // 1 week = 7 rations
       effect: {
-        type: 'utility',
-        narrative: 'You eat some dried meat and hardtack. Not delicious, but filling.'
+        type: 'healing',
+        formula: '1d4',
+        narrative: 'You eat a ration. The dried food restores some vitality.'
       },
       usableIn: ['exploration']
     }

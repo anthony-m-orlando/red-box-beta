@@ -1,9 +1,10 @@
 import React, { useState } from 'react';
-import { Sword, Scroll, Package, ArrowRight } from 'lucide-react';
+import { Sword, Scroll, Package, ArrowRight, Bed } from 'lucide-react';
 import { useCharacter } from '../../contexts/CharacterContext';
 import { useAdventure } from '../../contexts/AdventureContext';
 import { getTutorialMonster } from '../../data/tutorialAdventure';
 import { applyItemEffect } from '../../utils/items';
+import { calculateModifier } from '../../utils/calculations';
 import Button from '../common/Button';
 import PaperContainer from '../common/PaperContainer';
 import CombatUI from '../combat/CombatUI';
@@ -14,7 +15,7 @@ import './ActionPanel.css';
  * ActionPanel - Shows current room status and available actions
  */
 export function ActionPanel() {
-  const { character, heal, removeItem } = useCharacter();
+  const { character, heal, removeItem, decrementItemQuantity, rest } = useCharacter();
   const adventure = useAdventure();
   const { getCurrentRoom, enterRoom, addNarration } = adventure;
   const [showItemMenu, setShowItemMenu] = useState(false);
@@ -61,16 +62,34 @@ export function ActionPanel() {
         break;
     }
     
-    // Remove consumed items
+    // Handle consumed items with quantity tracking
     if (result.consumed) {
-      // Decrease quantity or remove item
       if (item.quantity !== undefined && item.quantity > 1) {
-        // Would need to update item quantity
-        // For now, we'll handle this in a future update
+        // Decrement quantity
+        decrementItemQuantity(item.id, 1);
       } else {
+        // Remove item entirely
         removeItem(item.id);
       }
     }
+  };
+  
+  // Handle rest
+  const handleRest = () => {
+    // Calculate healing
+    const conMod = calculateModifier(character.abilities.constitution);
+    const healAmount = 4 + conMod;
+    const actualHeal = Math.min(healAmount, character.hp.max - character.hp.current);
+    
+    // Rest character (restores HP and spell slots)
+    rest();
+    
+    // Mark adventure as rested
+    adventure.rest();
+    
+    // Add narration
+    addNarration('system_message', 'You rest and recover your strength.');
+    addNarration('dm_note', `You restore ${actualHeal} hit points and recover your spell slots. The dungeon remains quiet during your respite.`);
   };
   
   return (
@@ -199,6 +218,19 @@ export function ActionPanel() {
                 >
                   Use Item
                 </Button>
+                
+                {/* Rest Button - Only in exploration, once per adventure */}
+                {!adventure.adventure.hasRested && (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    icon={<Bed />}
+                    fullWidth
+                    onClick={handleRest}
+                  >
+                    Rest (Once Per Adventure)
+                  </Button>
+                )}
               </div>
             </div>
           </>
