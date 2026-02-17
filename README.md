@@ -1,2 +1,4 @@
 # red-box-beta
 An Old School RPG built with Agentic AI
+Project Description
+The Old School RPG Demo is a browser-based, single-player tribute to the 1980s era of tabletop gaming, specifically designed to recreate the intimate feel of solo D&D Basic gameplay. Built with React 18 and Vite, this "analog-digital" experience utilizes a distinctive manila folder UI metaphor to present character sheets, hand-drawn graph paper maps, and leather-bound journals across a tactile, paper-textured interface. The engine adheres strictly to 1980s Basic Rules mechanics—including 3d6 ability generation, THAC0, and authentic saving throw tables—all while remaining entirely client-side and offline-first. From navigating the perilous halls of "In Search of the Unknown" to managing encumbrance and manual dice rolls, this project serves as both a functional game and a nostalgic artifact for fans of classic dungeon crawling.
