@@ -1,10 +1,11 @@
 import React, { useState } from 'react';
-import { Sword, Scroll, Package, ArrowRight, Bed } from 'lucide-react';
+import { Sword, Scroll, Package, ArrowRight, Bed, Flame } from 'lucide-react';
 import { useCharacter } from '../../contexts/CharacterContext';
 import { useAdventure } from '../../contexts/AdventureContext';
 import { getTutorialMonster } from '../../data/tutorialAdventure';
 import { applyItemEffect } from '../../utils/items';
 import { calculateModifier } from '../../utils/calculations';
+import { rollDice } from '../../utils/dice';
 import Button from '../common/Button';
 import PaperContainer from '../common/PaperContainer';
 import CombatUI from '../combat/CombatUI';
@@ -92,6 +93,69 @@ export function ActionPanel() {
     addNarration('dm_note', `You restore ${actualHeal} hit points and recover your spell slots. The dungeon remains quiet during your respite.`);
   };
   
+  // Handle lighting a torch
+  const handleLightTorch = () => {
+    // Check if character has a torch
+    const hasTorch = character.inventory.some(item => item.id === 'torch' && (item.quantity || 1) > 0);
+    
+    if (!hasTorch) {
+      addNarration('dm_note', 'You have no torches to light!');
+      return;
+    }
+    
+    // Use a torch
+    decrementItemQuantity('torch', 1);
+    
+    // Light the torch
+    adventure.lightTorch();
+    
+    // Add narration
+    addNarration('system_message', 'You light a torch.');
+    addNarration('dm_note', 'Flickering flames cast dancing shadows on the walls. The torch will burn for 6 turns.');
+  };
+  
+  // Handle room movement with trap checking
+  const handleMove = (targetRoomId) => {
+    const currentRoom = getCurrentRoom();
+    
+    // Check for undetected traps in current room
+    if (currentRoom.contents.traps && currentRoom.contents.traps.length > 0) {
+      const trap = currentRoom.contents.traps[0];
+      
+      if (!trap.detected && !trap.triggered) {
+        // Trigger the trap!
+        trap.triggered = true;
+        
+        addNarration('system_message', '⚠️ A pit opens beneath your feet!');
+        
+        // Roll saving throw
+        const saveRoll = rollDice(1, 20)[0];
+        const saveTarget = 12; // Death Ray save for 1st level
+        
+        if (saveRoll >= saveTarget) {
+          // Saved!
+          addNarration('combat_action', `You leap aside at the last moment! (Rolled ${saveRoll}, needed ${saveTarget})`);
+          addNarration('dm_note', 'Your quick reflexes saved you from falling into the pit.');
+        } else {
+          // Failed save - take damage
+          const damage = rollDice(1, 6)[0];
+          takeDamage(damage);
+          addNarration('combat_action', `You fall into the pit! Take ${damage} damage! (Rolled ${saveRoll}, needed ${saveTarget})`);
+          addNarration('dm_note', 'You tumble into the pit, landing hard on the stone floor below.');
+        }
+        
+        // Still allow movement after trap
+        setTimeout(() => {
+          enterRoom(targetRoomId);
+        }, 100);
+        return;
+      }
+    }
+    
+    // No trap or trap already dealt with - move normally
+    enterRoom(targetRoomId);
+  };
+  
   return (
     <div className="action-panel">
       <PaperContainer variant="cream" padding="lg" className="action-container">
@@ -167,7 +231,7 @@ export function ActionPanel() {
                       variant="primary"
                       size="sm"
                       icon={<ArrowRight />}
-                      onClick={() => enterRoom(exit.targetRoomId)}
+                      onClick={() => handleMove(exit.targetRoomId)}
                       fullWidth
                     >
                       Go {exit.direction}
@@ -186,23 +250,39 @@ export function ActionPanel() {
                   icon={<Scroll />}
                   fullWidth
                   onClick={() => {
-                    // Simple search implementation
-                    if (roomCleared) {
-                      adventure.dispatch({
-                        type: 'ADD_NARRATION',
-                        payload: {
-                          style: 'system_message',
-                          text: 'You search the room carefully but find nothing of interest.'
+                    const room = getCurrentRoom();
+                    
+                    // Check for undetected traps
+                    if (room.contents.traps && room.contents.traps.length > 0) {
+                      const trap = room.contents.traps[0]; // First trap
+                      
+                      if (!trap.detected) {
+                        // Determine detection chance based on class
+                        const className = character.class.id;
+                        let detectChance = trap.detectChance.default;
+                        
+                        if (className === 'dwarf' || className === 'thief') {
+                          detectChance = trap.detectChance[className];
                         }
-                      });
+                        
+                        // Roll for detection
+                        const roll = Math.random();
+                        
+                        if (roll < detectChance) {
+                          // Detected!
+                          trap.detected = true;
+                          addNarration('system_message', '🔍 You discover a hidden pit trap!');
+                          addNarration('dm_note', 'A concealed pit yawns before you. You carefully mark it to avoid falling in.');
+                        } else {
+                          addNarration('system_message', 'You search carefully but find nothing unusual.');
+                        }
+                      } else {
+                        addNarration('dm_note', 'You already know about the pit trap here.');
+                      }
+                    } else if (roomCleared) {
+                      addNarration('system_message', 'You search the room carefully but find nothing of interest.');
                     } else {
-                      adventure.dispatch({
-                        type: 'ADD_NARRATION',
-                        payload: {
-                          style: 'dm_note',
-                          text: 'You should deal with the danger here before searching...'
-                        }
-                      });
+                      addNarration('dm_note', 'You should deal with the danger here before searching...');
                     }
                   }}
                 >
@@ -230,6 +310,26 @@ export function ActionPanel() {
                   >
                     Rest (Once Per Adventure)
                   </Button>
+                )}
+                
+                {/* Light Torch Button - Only for classes without infravision */}
+                {!character.class?.infravision && !adventure.adventure.hasLight && (
+                  <Button
+                    variant="secondary"
+                    size="sm"
+                    icon={<Flame />}
+                    fullWidth
+                    onClick={handleLightTorch}
+                  >
+                    Light Torch
+                  </Button>
+                )}
+                
+                {/* Light Status - Show if light is active */}
+                {adventure.adventure.hasLight && (
+                  <div className="light-status">
+                    🔥 Torch lit ({adventure.adventure.lightDuration} turns)
+                  </div>
                 )}
               </div>
             </div>

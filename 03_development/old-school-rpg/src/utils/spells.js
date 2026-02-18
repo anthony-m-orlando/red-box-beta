@@ -114,6 +114,12 @@ export function castUtilitySpell(spell) {
     case 'detect_magic':
       message = `${spell.name} reveals magical auras! You sense the presence of enchantment.`;
       break;
+    case 'detect_evil':
+      message = `You focus your divine senses...`;
+      break;
+    case 'fizzle':
+      message = spell.implementation.message || `${spell.name} fizzles without useful effect here.`;
+      break;
     case 'read_magic':
       message = `${spell.name} allows you to decipher magical writing!`;
       break;

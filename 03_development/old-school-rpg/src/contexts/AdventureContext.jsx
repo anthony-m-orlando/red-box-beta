@@ -4,7 +4,7 @@ import { tutorialAdventure, getTutorialRoom, getTutorialMonster, checkTutorialVi
 /**
  * AdventureContext - Global adventure state
  */
-const AdventureContext = createContext();
+const AdventureContext = createContext(undefined);
 
 /**
  * Initial adventure state
@@ -45,6 +45,11 @@ const initialState = {
   
   // Rest tracking
   hasRested: false, // Can only rest once per adventure
+  
+  // Light tracking
+  hasLight: false, // Whether character has active light source
+  lightSource: null, // 'torch' | 'lantern' | 'spell' | null
+  lightDuration: 0, // Turns remaining
 };
 
 /**
@@ -184,6 +189,34 @@ function adventureReducer(state, action) {
       };
     }
     
+    case 'LIGHT_TORCH': {
+      return {
+        ...state,
+        hasLight: true,
+        lightSource: 'torch',
+        lightDuration: 6 // 6 turns for a torch
+      };
+    }
+    
+    case 'DECREMENT_LIGHT': {
+      const newDuration = Math.max(0, state.lightDuration - 1);
+      return {
+        ...state,
+        lightDuration: newDuration,
+        hasLight: newDuration > 0,
+        lightSource: newDuration > 0 ? state.lightSource : null
+      };
+    }
+    
+    case 'EXTINGUISH_LIGHT': {
+      return {
+        ...state,
+        hasLight: false,
+        lightSource: null,
+        lightDuration: 0
+      };
+    }
+    
     case 'RESET_ADVENTURE': {
       return initialState;
     }
@@ -313,6 +346,11 @@ export function AdventureProvider({ children }) {
     setDefeat: () => dispatch({ type: 'SET_DEFEAT' }),
     resetAdventure: () => dispatch({ type: 'RESET_ADVENTURE' }),
     rest: () => dispatch({ type: 'REST' }),
+    
+    // Light management
+    lightTorch: () => dispatch({ type: 'LIGHT_TORCH' }),
+    decrementLight: () => dispatch({ type: 'DECREMENT_LIGHT' }),
+    extinguishLight: () => dispatch({ type: 'EXTINGUISH_LIGHT' }),
     
     // Helpers
     getCurrentRoom: () => getTutorialRoom(state.currentRoomId),

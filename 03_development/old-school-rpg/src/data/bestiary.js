@@ -8,6 +8,7 @@ export const bestiary = {
     id: 'goblin',
     name: 'Goblin',
     type: 'humanoid',
+    alignment: 'Chaotic',
     hp: { current: 4, max: 4 },
     hitDice: '1-1',
     ac: 6,

@@ -15,7 +15,7 @@ import './CombatUI.css';
  * CombatUI - Turn-based combat interface
  */
 export function CombatUI({ enemy }) {
-  const { character, takeDamage, heal, addXP, updateGold, useSpellSlot, addItem } = useCharacter();
+  const { character, takeDamage, heal, addXP, updateGold, useSpellSlot, addItem, addBuff, decrementBuffDurations } = useCharacter();
   const adventure = useAdventure();
   const { endCombat, addNarration } = adventure;
   
@@ -77,8 +77,29 @@ export function CombatUI({ enemy }) {
     }
   }, [combatState]);
 
+  // Decrement buff durations at start of each round
+  useEffect(() => {
+    if (combatState === 'playerTurn' && round > 1) {
+      decrementBuffDurations();
+    }
+  }, [round, combatState]);
+
   const addLogEntry = (message) => {
     setCombatLog(prev => [...prev, { id: Date.now() + Math.random(), text: message }]);
+  };
+
+  // Calculate character's effective AC including buffs
+  const getEffectiveAC = () => {
+    let effectiveAC = character.ac;
+    
+    // Apply AC buffs (lower is better for AC)
+    character.activeBuffs.forEach(buff => {
+      if (buff.stat === 'ac') {
+        effectiveAC -= buff.bonus;
+      }
+    });
+    
+    return effectiveAC;
   };
 
   const handlePlayerAttack = () => {
@@ -183,14 +204,33 @@ export function CombatUI({ enemy }) {
         break;
         
       case 'buff':
-        // TODO: Apply buff to character (would need buff tracking system)
+        // Apply buff to character
+        const buff = {
+          spellId: spell.id,
+          stat: result.stat,
+          bonus: result.bonus,
+          duration: result.duration,
+          turnApplied: round
+        };
+        addBuff(buff);
         addLogEntry(`🛡️ ${spell.name} grants ${result.bonus > 0 ? '+' : ''}${result.bonus} ${result.stat.toUpperCase()}!`);
         addNarration('combat_action', result.message);
         break;
         
       case 'utility':
-        addLogEntry(`✨ ${result.message}`);
-        addNarration('combat_action', result.message);
+        // Special handling for Detect Evil
+        if (spell.id === 'detect_evil') {
+          if (enemy && enemy.alignment === 'Chaotic') {
+            addLogEntry(`👁️ You sense evil emanating from the ${enemy.name}!`);
+            addNarration('dm_note', `Your divine senses detect a malevolent presence - the ${enemy.name} radiates chaotic evil!`);
+          } else {
+            addLogEntry(`✨ You sense no evil nearby.`);
+            addNarration('dm_note', 'Your senses detect no evil in the immediate area.');
+          }
+        } else {
+          addLogEntry(`✨ ${result.message}`);
+          addNarration('combat_action', result.message);
+        }
         break;
         
       default:
@@ -235,7 +275,8 @@ export function CombatUI({ enemy }) {
     }
     
     // Enemy attacks
-    const attackRoll = rollAttack(enemy.thac0, character.ac);
+    const effectiveAC = getEffectiveAC();
+    const attackRoll = rollAttack(enemy.thac0, effectiveAC);
     
     if (attackRoll.hit) {
       const damage = rollDamage(enemy.damage);
@@ -357,6 +398,32 @@ export function CombatUI({ enemy }) {
         </div>
 
         <div className="combat-divider"></div>
+
+        {/* Active Buffs */}
+        {character.activeBuffs && character.activeBuffs.length > 0 && (
+          <>
+            <div className="active-buffs">
+              <h4>Active Effects</h4>
+              <div className="buff-list">
+                {character.activeBuffs.map((buff, index) => (
+                  <div key={index} className="buff-indicator">
+                    <Shield size={14} />
+                    <span className="buff-name">
+                      {buff.spellId.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                    </span>
+                    <span className="buff-effect">
+                      {buff.bonus > 0 ? '+' : ''}{buff.bonus} {buff.stat.toUpperCase()}
+                    </span>
+                    <span className="buff-duration">
+                      ({buff.duration} {buff.duration === 1 ? 'turn' : 'turns'})
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="combat-divider"></div>
+          </>
+        )}
 
         {/* Combat Actions */}
         {combatState === 'playerTurn' && (

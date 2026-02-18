@@ -49,6 +49,25 @@ export const spells = {
     flavorText: 'A shimmering barrier of holy light surrounds the target, repelling evil.'
   },
   
+  detect_evil: {
+    id: 'detect_evil',
+    name: 'Detect Evil',
+    level: 1,
+    classes: ['cleric'],
+    school: 'divination',
+    range: '120 feet',
+    duration: '1 turn',
+    description: 'You sense the presence of evil intentions and evil creatures within range. The spell reveals the direction of the strongest source of evil.',
+    effect: 'Detect evil creatures and sense their direction',
+    implementation: {
+      type: 'utility',
+      effect: 'detect_evil',
+      range: 120
+    },
+    flavorText: 'Your divine senses extend outward, detecting malevolent forces.',
+    note: 'Useful for locating evil enemies'
+  },
+  
   light: {
     id: 'light',
     name: 'Light',
@@ -141,10 +160,9 @@ export const spells = {
     description: 'You make a humanoid creature regard you as a trusted friend. The target must save vs spells or be charmed.',
     effect: 'Charm one person (save vs spells)',
     implementation: {
-      type: 'condition',
-      condition: 'charmed',
-      savingThrow: true,
-      saveType: 'spells'
+      type: 'utility',
+      effect: 'fizzle',
+      message: 'The enchantment weaves through the air but finds no purchase in this violent encounter.'
     },
     flavorText: 'You reach out with your mind, planting seeds of friendship and trust.',
     note: 'Causes enemy to become friendly - may end combat peacefully'
@@ -181,7 +199,8 @@ export const spells = {
     effect: 'Read magical writing for 1 turn',
     implementation: {
       type: 'utility',
-      effect: 'read_magic'
+      effect: 'fizzle',
+      message: 'The arcane runes shimmer briefly but reveal nothing useful in this moment of danger.'
     },
     flavorText: 'Ancient symbols rearrange themselves into comprehensible patterns.',
     note: 'Required to use scrolls - essential for Magic-Users'

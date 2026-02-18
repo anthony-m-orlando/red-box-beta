@@ -225,6 +225,63 @@
 }
 
 /* ========================================
+   Active Buffs
+   ======================================== */
+
+.active-buffs {
+  padding: var(--space-md);
+  background-color: rgba(44, 74, 124, 0.1);
+  border-left: 3px solid var(--ink-blue);
+  border-radius: var(--radius-sm);
+}
+
+.active-buffs h4 {
+  margin: 0 0 var(--space-sm) 0;
+  font-size: 0.9375rem;
+  color: var(--ink-blue);
+  font-weight: 700;
+}
+
+.buff-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-xs);
+}
+
+.buff-indicator {
+  display: flex;
+  align-items: center;
+  gap: var(--space-sm);
+  font-size: 0.875rem;
+  padding: var(--space-xs);
+  background-color: rgba(44, 74, 124, 0.05);
+  border-radius: var(--radius-sm);
+}
+
+.buff-indicator svg {
+  color: var(--ink-blue);
+  flex-shrink: 0;
+}
+
+.buff-name {
+  color: var(--ink-black);
+  font-weight: 600;
+}
+
+.buff-effect {
+  color: var(--ink-blue);
+  font-weight: 700;
+  font-family: var(--font-numbers);
+}
+
+.buff-duration {
+  margin-left: auto;
+  color: var(--ink-brown);
+  font-size: 0.8125rem;
+  font-style: italic;
+}
+
+/* ========================================
    Responsive
    ======================================== */
 

@@ -92,7 +92,22 @@ In the dim light, you see passages leading north and south.`,
         monsters: [],
         npcs: [],
         treasure: [],
-        traps: []
+        traps: [
+          {
+            id: 'pit_trap',
+            type: 'pit',
+            detected: false,
+            triggered: false,
+            damage: '1d6',
+            saveType: 'death', // Death Ray save
+            description: 'A concealed pit trap!',
+            detectChance: {
+              dwarf: 1.0, // Automatic detection for dwarves
+              thief: 1.0, // Automatic detection for thieves
+              default: 1/6 // 1 in 6 for others
+            }
+          }
+        ]
       },
       state: 'unexplored'
     },

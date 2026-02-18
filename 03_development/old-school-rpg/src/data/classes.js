@@ -91,6 +91,7 @@ export const classes = {
     requirements: { constitution: 9, strength: 9 },
     weapons: ['All weapons except longbow or two-handed sword'],
     armor: ['Any armor', 'Any shield'],
+    infravision: 60, // Feet - can see in darkness
     specialAbilities: [
       'Detect Construction: Notice unusual stonework (1-2 on d6)',
       'Detect Traps: Find traps in stonework (1-2 on d6)',
@@ -111,6 +112,7 @@ export const classes = {
     requirements: { intelligence: 9, strength: 9 },
     weapons: ['All weapons'],
     armor: ['Any armor', 'Any shield'],
+    infravision: 60, // Feet - can see in darkness
     specialAbilities: [
       'Arcane Spells: Can cast magic-user spells',
       'Secret Doors: Find secret doors (1-2 on d6)',
