@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Sword, Scroll, Package, ArrowRight, Bed, Flame } from 'lucide-react';
+import { Sword, Scroll, Package, ArrowRight, Bed } from 'lucide-react';
 import { useCharacter } from '../../contexts/CharacterContext';
 import { useAdventure } from '../../contexts/AdventureContext';
 import { getTutorialMonster } from '../../data/tutorialAdventure';
@@ -54,7 +54,9 @@ export function ActionPanel() {
         break;
         
       case 'light':
-        // Light effects are narrative only (for now)
+        // Actually light the torch/lantern
+        adventure.lightTorch();
+        addNarration('system_message', '🔥 Light source activated!');
         break;
         
       case 'utility':
@@ -91,27 +93,6 @@ export function ActionPanel() {
     // Add narration
     addNarration('system_message', 'You rest and recover your strength.');
     addNarration('dm_note', `You restore ${actualHeal} hit points and recover your spell slots. The dungeon remains quiet during your respite.`);
-  };
-  
-  // Handle lighting a torch
-  const handleLightTorch = () => {
-    // Check if character has a torch
-    const hasTorch = character.inventory.some(item => item.id === 'torch' && (item.quantity || 1) > 0);
-    
-    if (!hasTorch) {
-      addNarration('dm_note', 'You have no torches to light!');
-      return;
-    }
-    
-    // Use a torch
-    decrementItemQuantity('torch', 1);
-    
-    // Light the torch
-    adventure.lightTorch();
-    
-    // Add narration
-    addNarration('system_message', 'You light a torch.');
-    addNarration('dm_note', 'Flickering flames cast dancing shadows on the walls. The torch will burn for 6 turns.');
   };
   
   // Handle room movement with trap checking
@@ -309,19 +290,6 @@ export function ActionPanel() {
                     onClick={handleRest}
                   >
                     Rest (Once Per Adventure)
-                  </Button>
-                )}
-                
-                {/* Light Torch Button - Only for classes without infravision */}
-                {!character.class?.infravision && !adventure.adventure.hasLight && (
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    icon={<Flame />}
-                    fullWidth
-                    onClick={handleLightTorch}
-                  >
-                    Light Torch
                   </Button>
                 )}
                 

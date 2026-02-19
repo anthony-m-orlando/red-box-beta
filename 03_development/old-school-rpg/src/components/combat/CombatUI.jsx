@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Swords, Shield, AlertTriangle, Sparkles } from 'lucide-react';
 import { useCharacter } from '../../contexts/CharacterContext';
 import { useAdventure } from '../../contexts/AdventureContext';
@@ -17,7 +17,7 @@ import './CombatUI.css';
 export function CombatUI({ enemy }) {
   const { character, takeDamage, heal, addXP, updateGold, useSpellSlot, addItem, addBuff, decrementBuffDurations } = useCharacter();
   const adventure = useAdventure();
-  const { endCombat, addNarration } = adventure;
+  const { endCombat, addNarration, enterRoom } = adventure;
   
   const [combatState, setCombatState] = useState('initiative'); // initiative, playerTurn, enemyTurn, victory, defeat
   const [enemyHP, setEnemyHP] = useState(enemy.hp.current);
@@ -27,12 +27,12 @@ export function CombatUI({ enemy }) {
   const [combatLog, setCombatLog] = useState([]);
   const [showSpellMenu, setShowSpellMenu] = useState(false);
 
-  const [combatStarted, setCombatStarted] = useState(false);
+  const hasInitialized = useRef(false);
 
-  // Roll initiative on mount
+  // Roll initiative on mount - only once
   useEffect(() => {
-    if (combatStarted) return; // Prevent double execution
-    setCombatStarted(true);
+    if (hasInitialized.current) return;
+    hasInitialized.current = true;
     
     const pInit = rollInitiative();
     const eInit = rollInitiative();
@@ -47,13 +47,12 @@ export function CombatUI({ enemy }) {
       setCombatState('playerTurn');
     } else if (eInit > pInit) {
       addLogEntry(`${enemy.name} goes first!`);
-      // Delay enemy turn slightly for dramatic effect
       setTimeout(() => setCombatState('enemyTurn'), 1000);
     } else {
       addLogEntry(`Tied initiative! You go first.`);
       setCombatState('playerTurn');
     }
-  }, [combatStarted]);
+  }, []); // Empty array - only run once on mount
 
   // Check for victory/defeat
   useEffect(() => {
@@ -155,7 +154,20 @@ export function CombatUI({ enemy }) {
     if (fleeRoll > 0.5) {
       addLogEntry(`🏃 You successfully flee from combat!`);
       addNarration('combat_action', 'You flee from the battle!');
-      endCombat(false, enemy.id);
+      
+      // Move player back to previous room if there is one
+      const previousRoom = adventure.adventure.previousRoomId;
+      if (previousRoom) {
+        addNarration('system_message', 'You retreat to the previous room.');
+        endCombat(false, enemy.id);
+        // Small delay to let combat close before moving
+        setTimeout(() => {
+          enterRoom(previousRoom);
+        }, 500);
+      } else {
+        // No previous room, just end combat
+        endCombat(false, enemy.id);
+      }
     } else {
       addLogEntry(`🏃 You fail to escape! ${enemy.name} gets a free attack!`);
       addNarration('combat_action', 'Failed to flee!');

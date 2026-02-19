@@ -13,6 +13,7 @@ const initialState = {
   // Current adventure
   adventureId: 'tutorial',
   currentRoomId: 'tutorial_entrance',
+  previousRoomId: null, // Track where player came from for fleeing
   
   // Room states
   roomStates: {
@@ -78,6 +79,7 @@ function adventureReducer(state, action) {
       
       return {
         ...state,
+        previousRoomId: state.currentRoomId, // Track where we came from
         currentRoomId: roomId,
         visitedRooms: newVisited,
         roomStates: newRoomStates,
