@@ -246,6 +246,18 @@ export function ActionPanel() {
                           detectChance = trap.detectChance[className];
                         }
                         
+                        // Apply darkness penalty if no light and no infravision
+                        const hasInfravision = character.class?.infravision > 0;
+                        const hasLight = adventure.adventure.hasLight;
+                        
+                        if (!hasInfravision && !hasLight) {
+                          // -4 penalty translates to reducing chance significantly
+                          // For 1/6 chance (0.167), reduce to ~0.04
+                          // For automatic (1.0), reduce to 0.6
+                          detectChance = detectChance * 0.25; // 75% reduction
+                          addNarration('dm_note', '⚠️ Searching in darkness is extremely difficult...');
+                        }
+                        
                         // Roll for detection
                         const roll = Math.random();
                         
@@ -255,7 +267,11 @@ export function ActionPanel() {
                           addNarration('system_message', '🔍 You discover a hidden pit trap!');
                           addNarration('dm_note', 'A concealed pit yawns before you. You carefully mark it to avoid falling in.');
                         } else {
-                          addNarration('system_message', 'You search carefully but find nothing unusual.');
+                          if (!hasInfravision && !hasLight) {
+                            addNarration('system_message', 'You fumble around in the darkness but find nothing.');
+                          } else {
+                            addNarration('system_message', 'You search carefully but find nothing unusual.');
+                          }
                         }
                       } else {
                         addNarration('dm_note', 'You already know about the pit trap here.');
@@ -297,6 +313,13 @@ export function ActionPanel() {
                 {adventure.adventure.hasLight && (
                   <div className="light-status">
                     🔥 Torch lit ({adventure.adventure.lightDuration} turns)
+                  </div>
+                )}
+                
+                {/* Darkness Warning - Show if no light and no infravision */}
+                {!character.class?.infravision && !adventure.adventure.hasLight && (
+                  <div className="darkness-warning-exploration">
+                    ⚠️ In Darkness (-4 attack, reduced search)
                   </div>
                 )}
               </div>

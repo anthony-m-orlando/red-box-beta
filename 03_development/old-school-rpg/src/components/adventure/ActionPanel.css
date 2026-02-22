@@ -242,6 +242,18 @@
   margin-top: var(--space-sm);
 }
 
+.darkness-warning-exploration {
+  padding: var(--space-sm);
+  background-color: rgba(139, 0, 0, 0.1);
+  border: 2px solid rgba(139, 0, 0, 0.3);
+  border-radius: var(--radius-sm);
+  text-align: center;
+  font-weight: 600;
+  color: #8B0000;
+  font-size: 0.875rem;
+  margin-top: var(--space-sm);
+}
+
 /* ========================================
    Responsive
    ======================================== */

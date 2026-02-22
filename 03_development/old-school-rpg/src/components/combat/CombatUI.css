@@ -282,6 +282,57 @@
 }
 
 /* ========================================
+   Enemy Conditions
+   ======================================== */
+
+.enemy-condition {
+  margin-top: var(--space-sm);
+  padding: var(--space-xs) var(--space-sm);
+  background-color: rgba(138, 43, 226, 0.1);
+  border-radius: var(--radius-sm);
+  text-align: center;
+}
+
+.condition-asleep {
+  font-weight: 600;
+  color: var(--ink-blue);
+  font-size: 0.875rem;
+}
+
+/* ========================================
+   Darkness Warning
+   ======================================== */
+
+.darkness-warning {
+  padding: var(--space-md);
+  background-color: rgba(139, 0, 0, 0.1);
+  border: 2px solid rgba(139, 0, 0, 0.3);
+  border-left: 4px solid #8B0000;
+  border-radius: var(--radius-sm);
+}
+
+.darkness-warning h4 {
+  margin: 0 0 var(--space-xs) 0;
+  font-size: 0.9375rem;
+  color: #8B0000;
+  font-weight: 700;
+}
+
+.darkness-warning p {
+  margin: var(--space-xs) 0;
+  font-size: 0.875rem;
+  color: var(--ink-brown);
+  font-weight: 600;
+}
+
+.darkness-hint {
+  font-size: 0.8125rem !important;
+  font-style: italic;
+  color: var(--ink-brown) !important;
+  font-weight: 400 !important;
+}
+
+/* ========================================
    Responsive
    ======================================== */
 

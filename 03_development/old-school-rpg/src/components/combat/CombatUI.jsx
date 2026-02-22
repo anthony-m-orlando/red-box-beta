@@ -26,6 +26,7 @@ export function CombatUI({ enemy }) {
   const [round, setRound] = useState(1);
   const [combatLog, setCombatLog] = useState([]);
   const [showSpellMenu, setShowSpellMenu] = useState(false);
+  const [enemyConditions, setEnemyConditions] = useState([]); // ['asleep', 'charmed', etc.]
 
   const hasInitialized = useRef(false);
 
@@ -104,9 +105,19 @@ export function CombatUI({ enemy }) {
   const handlePlayerAttack = () => {
     console.log('Player attack - combat state:', combatState);
     
+    // Check for darkness penalty
+    const hasInfravision = character.class?.infravision > 0;
+    const hasLight = adventure.adventure.hasLight;
+    const darknessPenalty = (!hasInfravision && !hasLight) ? -4 : 0;
+    
     // Calculate attack
-    const attackBonus = getStrengthAttackBonus(character.abilities.strength);
+    const attackBonus = getStrengthAttackBonus(character.abilities.strength) + darknessPenalty;
     const attackRoll = rollAttack(character.thac0, enemy.ac, attackBonus);
+    
+    // Log darkness penalty
+    if (darknessPenalty < 0) {
+      addLogEntry(`⚠️ Fighting in darkness! (-4 to hit)`);
+    }
     
     if (attackRoll.hit) {
       // Roll damage
@@ -121,6 +132,13 @@ export function CombatUI({ enemy }) {
       }
       
       setEnemyHP(prev => Math.max(0, prev - damage));
+      
+      // Wake sleeping enemy on damage
+      if (enemyConditions.includes('asleep')) {
+        setEnemyConditions(enemyConditions.filter(c => c !== 'asleep'));
+        addLogEntry(`The ${enemy.name} wakes up!`);
+        addNarration('combat_action', `The ${enemy.name} is jolted awake by your attack!`);
+      }
       
       // Add to narration
       addNarration('combat_action', `You hit the ${enemy.name} for ${damage} damage!`, { emphasis: true });
@@ -228,6 +246,30 @@ export function CombatUI({ enemy }) {
         addLogEntry(`🛡️ ${spell.name} grants ${result.bonus > 0 ? '+' : ''}${result.bonus} ${result.stat.toUpperCase()}!`);
         addNarration('combat_action', result.message);
         break;
+      
+      case 'condition':
+        // Handle Sleep spell
+        if (spell.id === 'sleep') {
+          // Roll HD affected
+          const hdRoll1 = Math.floor(Math.random() * 8) + 1;
+          const hdRoll2 = Math.floor(Math.random() * 8) + 1;
+          const hdAffected = hdRoll1 + hdRoll2;
+          
+          // Get enemy HD (parse "1" from "1 HD" or "1-1" etc)
+          const enemyHD = parseInt(enemy.hitDice) || 1;
+          
+          if (enemyHD <= hdAffected) {
+            // Enemy falls asleep!
+            setEnemyConditions([...enemyConditions, 'asleep']);
+            addLogEntry(`💤 The ${enemy.name} falls into a deep slumber!`);
+            addNarration('combat_action', `${spell.name} causes the ${enemy.name} to collapse into magical sleep! (${hdAffected} HD affected)`);
+          } else {
+            // Too many HD to affect
+            addLogEntry(`✨ ${spell.name} fails to affect the ${enemy.name}.`);
+            addNarration('combat_action', `The ${enemy.name} is too powerful to be affected by ${spell.name}. (Need ${enemyHD} HD, rolled ${hdAffected})`);
+          }
+        }
+        break;
         
       case 'utility':
         // Special handling for Detect Evil
@@ -239,6 +281,11 @@ export function CombatUI({ enemy }) {
             addLogEntry(`✨ You sense no evil nearby.`);
             addNarration('dm_note', 'Your senses detect no evil in the immediate area.');
           }
+        } else if (spell.id === 'light') {
+          // Light spell creates magical illumination
+          adventure.lightTorch(); // Use existing light system but with spell duration
+          addLogEntry(`✨ Magical light fills the area!`);
+          addNarration('combat_action', 'A soft, steady radiance springs forth from your hand, illuminating the darkness with magical light.');
         } else {
           addLogEntry(`✨ ${result.message}`);
           addNarration('combat_action', result.message);
@@ -275,6 +322,15 @@ export function CombatUI({ enemy }) {
     }
     
     console.log('Enemy turn executing...');
+    
+    // Check if enemy is asleep
+    if (enemyConditions.includes('asleep')) {
+      addLogEntry(`💤 The ${enemy.name} is fast asleep...`);
+      addNarration('combat_action', `The ${enemy.name} slumbers peacefully, oblivious to danger.`);
+      setRound(round + 1);
+      setCombatState('playerTurn');
+      return;
+    }
     
     // Check morale if badly wounded
     if (enemyHP < enemy.hp.max * 0.25) {
@@ -379,7 +435,7 @@ export function CombatUI({ enemy }) {
       <PaperContainer variant="aged" padding="lg" className="combat-container">
         {/* Enemy Status */}
         <div className="enemy-status">
-          <h3>{enemy.name}</h3>
+          <h3>{enemy.name} {enemyConditions.includes('asleep') && '💤'}</h3>
           <div className="enemy-hp-bar">
             <div 
               className="enemy-hp-fill"
@@ -393,6 +449,11 @@ export function CombatUI({ enemy }) {
             <span>AC: {enemy.ac}</span>
             <span>THAC0: {enemy.thac0}</span>
           </div>
+          {enemyConditions.includes('asleep') && (
+            <div className="enemy-condition">
+              <span className="condition-asleep">😴 Asleep</span>
+            </div>
+          )}
         </div>
 
         <div className="combat-divider"></div>
@@ -432,6 +493,18 @@ export function CombatUI({ enemy }) {
                   </div>
                 ))}
               </div>
+            </div>
+            <div className="combat-divider"></div>
+          </>
+        )}
+        
+        {/* Darkness Warning */}
+        {!character.class?.infravision && !adventure.adventure.hasLight && (
+          <>
+            <div className="darkness-warning">
+              <h4>⚠️ Fighting in Darkness</h4>
+              <p>-4 penalty to attack rolls</p>
+              <p className="darkness-hint">Use a torch or cast Light spell!</p>
             </div>
             <div className="combat-divider"></div>
           </>
