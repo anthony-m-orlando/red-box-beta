@@ -1,8 +1,11 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Swords, Shield, AlertTriangle, Sparkles } from 'lucide-react';
 import { useCharacter } from '../../contexts/CharacterContext';
 import { useAdventure } from '../../contexts/AdventureContext';
+import { getClassById } from '../../data/classes';
 import { rollAttack, rollDamage, rollInitiative, checkMorale, applyStrengthDamage, getStrengthAttackBonus } from '../../utils/combat';
+import soundManager from '../../utils/sound';
+import handleCastSpell from '../../utils/handleCastSpell';
 import { applySpellEffect, hasSpellsAvailable } from '../../utils/spells';
 import { generateTreasure, formatTreasureMessage } from '../../utils/treasure';
 import { getSpell } from '../../data/spells';
@@ -15,9 +18,9 @@ import './CombatUI.css';
  * CombatUI - Turn-based combat interface
  */
 export function CombatUI({ enemy }) {
-  const { character, takeDamage, heal, addXP, updateGold, useSpellSlot, addItem } = useCharacter();
+  const { character, takeDamage, heal, addXP, updateGold, useSpellSlot, addItem, addBuff, decrementBuffDurations } = useCharacter();
   const adventure = useAdventure();
-  const { endCombat, addNarration } = adventure;
+  const { endCombat, addNarration, enterRoom } = adventure;
   
   const [combatState, setCombatState] = useState('initiative'); // initiative, playerTurn, enemyTurn, victory, defeat
   const [enemyHP, setEnemyHP] = useState(enemy.hp.current);
@@ -26,13 +29,14 @@ export function CombatUI({ enemy }) {
   const [round, setRound] = useState(1);
   const [combatLog, setCombatLog] = useState([]);
   const [showSpellMenu, setShowSpellMenu] = useState(false);
+  const [enemyConditions, setEnemyConditions] = useState([]); // ['asleep', 'charmed', etc.]
 
-  const [combatStarted, setCombatStarted] = useState(false);
+  const hasInitialized = useRef(false);
 
-  // Roll initiative on mount
+  // Roll initiative on mount - only once
   useEffect(() => {
-    if (combatStarted) return; // Prevent double execution
-    setCombatStarted(true);
+    if (hasInitialized.current) return;
+    hasInitialized.current = true;
     
     const pInit = rollInitiative();
     const eInit = rollInitiative();
@@ -47,13 +51,12 @@ export function CombatUI({ enemy }) {
       setCombatState('playerTurn');
     } else if (eInit > pInit) {
       addLogEntry(`${enemy.name} goes first!`);
-      // Delay enemy turn slightly for dramatic effect
       setTimeout(() => setCombatState('enemyTurn'), 1000);
     } else {
       addLogEntry(`Tied initiative! You go first.`);
       setCombatState('playerTurn');
     }
-  }, [combatStarted]);
+  }, []); // Empty array - only run once on mount
 
   // Check for victory/defeat
   useEffect(() => {
@@ -68,7 +71,6 @@ export function CombatUI({ enemy }) {
   // Auto-execute enemy turn
   useEffect(() => {
     if (combatState === 'enemyTurn' && enemyHP > 0) {
-      console.log('Auto-triggering enemy turn via useEffect');
       const timer = setTimeout(() => {
         handleEnemyTurn();
       }, 1500);
@@ -77,21 +79,54 @@ export function CombatUI({ enemy }) {
     }
   }, [combatState]);
 
+  // Decrement buff durations at start of each round
+  useEffect(() => {
+    if (combatState === 'playerTurn' && round > 1) {
+      decrementBuffDurations();
+    }
+  }, [round, combatState]);
+
   const addLogEntry = (message) => {
     setCombatLog(prev => [...prev, { id: Date.now() + Math.random(), text: message }]);
   };
 
+  // Calculate character's effective AC including buffs
+  const getEffectiveAC = () => {
+    let effectiveAC = character.ac;
+    
+    // Apply AC buffs (lower is better for AC)
+    character.activeBuffs.forEach(buff => {
+      if (buff.stat === 'ac') {
+        effectiveAC -= buff.bonus;
+      }
+    });
+    
+    return effectiveAC;
+  };
+
   const handlePlayerAttack = () => {
-    console.log('Player attack - combat state:', combatState);
+    // Check for darkness penalty
+    const classData = getClassById(character.class);
+    const hasInfravision = classData?.infravision > 0;
+    const hasLight = adventure.adventure.hasLight;
+    const darknessPenalty = (!hasInfravision && !hasLight) ? -4 : 0;
     
     // Calculate attack
-    const attackBonus = getStrengthAttackBonus(character.abilities.strength);
+    const attackBonus = getStrengthAttackBonus(character.abilities.strength) + darknessPenalty;
     const attackRoll = rollAttack(character.thac0, enemy.ac, attackBonus);
+    
+    // Log darkness penalty
+    if (darknessPenalty < 0) {
+      addLogEntry(`⚠️ Fighting in darkness! (-4 to hit)`);
+    }
     
     if (attackRoll.hit) {
       // Roll damage
       let damage = rollDamage('1d8'); // Basic sword damage
       damage = applyStrengthDamage(damage, character.abilities.strength);
+      
+      // Play hit sound
+      soundManager.play('hit');
       
       if (attackRoll.critical) {
         damage = damage * 2;
@@ -102,9 +137,19 @@ export function CombatUI({ enemy }) {
       
       setEnemyHP(prev => Math.max(0, prev - damage));
       
+      // Wake sleeping enemy on damage
+      if (enemyConditions.includes('asleep')) {
+        setEnemyConditions(enemyConditions.filter(c => c !== 'asleep'));
+        addLogEntry(`The ${enemy.name} wakes up!`);
+        addNarration('combat_action', `The ${enemy.name} is jolted awake by your attack!`);
+      }
+      
       // Add to narration
       addNarration('combat_action', `You hit the ${enemy.name} for ${damage} damage!`, { emphasis: true });
     } else {
+      // Play miss sound
+      soundManager.play('miss');
+      
       if (attackRoll.fumble) {
         addLogEntry(`💥 FUMBLE! Your attack goes wild!`);
         addNarration('combat_action', 'Your attack misses wildly!');
@@ -134,7 +179,20 @@ export function CombatUI({ enemy }) {
     if (fleeRoll > 0.5) {
       addLogEntry(`🏃 You successfully flee from combat!`);
       addNarration('combat_action', 'You flee from the battle!');
-      endCombat(false, enemy.id);
+      
+      // Move player back to previous room if there is one
+      const previousRoom = adventure.adventure.previousRoomId;
+      if (previousRoom) {
+        addNarration('system_message', 'You retreat to the previous room.');
+        endCombat(false, enemy.id);
+        // Small delay to let combat close before moving
+        setTimeout(() => {
+          enterRoom(previousRoom);
+        }, 500);
+      } else {
+        // No previous room, just end combat
+        endCombat(false, enemy.id);
+      }
     } else {
       addLogEntry(`🏃 You fail to escape! ${enemy.name} gets a free attack!`);
       addNarration('combat_action', 'Failed to flee!');
@@ -143,86 +201,49 @@ export function CombatUI({ enemy }) {
     }
   };
 
-  const handleCastSpell = (spellId) => {
-    console.log('Casting spell:', spellId);
-    
-    const spell = getSpell(spellId);
-    if (!spell) {
-      console.error('Spell not found:', spellId);
-      return;
-    }
-    
-    // Close spell menu
-    setShowSpellMenu(false);
-    
-    // Determine target based on spell type
-    const spellType = spell.implementation.type;
-    const target = (spellType === 'healing' || spellType === 'buff') 
-      ? character  // Self-target for healing/buffs
-      : { hp: { current: enemyHP, max: enemy.hp.max }, ...enemy }; // Enemy for damage
-    
-    // Apply spell effect
-    const result = applySpellEffect(spell, character, target, 'combat');
-    
-    // Log spell cast
-    addLogEntry(`✨ You cast ${spell.name}!`);
-    addNarration('combat_action', `You cast ${spell.name}!`, { emphasis: true });
-    
-    // Apply effects based on type
-    switch (result.type) {
-      case 'healing':
-        heal(result.healAmount);
-        addLogEntry(`💚 ${spell.name} heals ${result.healAmount} HP!`);
-        addNarration('combat_action', `${spell.name} restores ${result.healAmount} hit points!`);
-        break;
-        
-      case 'damage':
-        setEnemyHP(result.newHP);
-        addLogEntry(`⚡ ${spell.name} deals ${result.damage} damage!`);
-        addNarration('combat_action', `${spell.name} strikes for ${result.damage} damage!`, { emphasis: true });
-        break;
-        
-      case 'buff':
-        // TODO: Apply buff to character (would need buff tracking system)
-        addLogEntry(`🛡️ ${spell.name} grants ${result.bonus > 0 ? '+' : ''}${result.bonus} ${result.stat.toUpperCase()}!`);
-        addNarration('combat_action', result.message);
-        break;
-        
-      case 'utility':
-        addLogEntry(`✨ ${result.message}`);
-        addNarration('combat_action', result.message);
-        break;
-        
-      default:
-        addLogEntry(`✨ ${result.message}`);
-        addNarration('combat_action', result.message);
-    }
-    
-    // Use spell slot
-    useSpellSlot(spell.level);
-    
-    // Enemy turn next
-    setCombatState('enemyTurn');
+  const handleCastSpellLocal = (spellId) => {
+    // Call shared handleCastSpell with combat context
+    handleCastSpell(spellId, {
+      character,
+      enemy,
+      enemyHP,
+      setEnemyHP,
+      enemyConditions,
+      setEnemyConditions,
+      round,
+      adventure,
+      addLogEntry,
+      addNarration,
+      heal,
+      addBuff,
+      useSpellSlot,
+      setCombatState,
+      setShowSpellMenu
+    });
   };
 
   const handleEnemyTurn = () => {
     // Double-check combat is still active
     if (combatState !== 'enemyTurn') {
-      console.log('Enemy turn skipped - wrong state:', combatState);
       return;
     }
     
     if (enemyHP <= 0) {
-      console.log('Enemy turn skipped - enemy defeated');
       return;
     }
     
     if (character.hp.current <= 0) {
-      console.log('Enemy turn skipped - player defeated');
       return;
     }
     
-    console.log('Enemy turn executing...');
+    // Check if enemy is asleep
+    if (enemyConditions.includes('asleep')) {
+      addLogEntry(`💤 The ${enemy.name} is fast asleep...`);
+      addNarration('combat_action', `The ${enemy.name} slumbers peacefully, oblivious to danger.`);
+      setRound(round + 1);
+      setCombatState('playerTurn');
+      return;
+    }
     
     // Check morale if badly wounded
     if (enemyHP < enemy.hp.max * 0.25) {
@@ -235,7 +256,8 @@ export function CombatUI({ enemy }) {
     }
     
     // Enemy attacks
-    const attackRoll = rollAttack(enemy.thac0, character.ac);
+    const effectiveAC = getEffectiveAC();
+    const attackRoll = rollAttack(enemy.thac0, effectiveAC);
     
     if (attackRoll.hit) {
       const damage = rollDamage(enemy.damage);
@@ -271,6 +293,7 @@ export function CombatUI({ enemy }) {
 
   const handleVictory = () => {
     setCombatState('victory');
+    soundManager.play('victory'); // Play victory fanfare
     addLogEntry(`🎉 Victory! ${enemy.name} is defeated!`);
     
     // Award XP
@@ -312,6 +335,7 @@ export function CombatUI({ enemy }) {
 
   const handleDefeat = () => {
     setCombatState('defeat');
+    soundManager.play('defeat'); // Play defeat sound
     addLogEntry(`💀 You have been defeated!`);
     addNarration('combat_action', 'You fall unconscious...', { emphasis: true });
     
@@ -326,7 +350,7 @@ export function CombatUI({ enemy }) {
       <PaperContainer variant="aged" padding="lg" className="combat-container">
         {/* Enemy Status */}
         <div className="enemy-status">
-          <h3>{enemy.name}</h3>
+          <h3>{enemy.name} {enemyConditions.includes('asleep') && '💤'}</h3>
           <div className="enemy-hp-bar">
             <div 
               className="enemy-hp-fill"
@@ -340,6 +364,11 @@ export function CombatUI({ enemy }) {
             <span>AC: {enemy.ac}</span>
             <span>THAC0: {enemy.thac0}</span>
           </div>
+          {enemyConditions.includes('asleep') && (
+            <div className="enemy-condition">
+              <span className="condition-asleep">😴 Asleep</span>
+            </div>
+          )}
         </div>
 
         <div className="combat-divider"></div>
@@ -358,6 +387,48 @@ export function CombatUI({ enemy }) {
 
         <div className="combat-divider"></div>
 
+        {/* Active Buffs */}
+        {character.activeBuffs && character.activeBuffs.length > 0 && (
+          <>
+            <div className="active-buffs">
+              <h4>Active Effects</h4>
+              <div className="buff-list">
+                {character.activeBuffs.map((buff, index) => (
+                  <div key={index} className="buff-indicator">
+                    <Shield size={14} />
+                    <span className="buff-name">
+                      {buff.spellId.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())}
+                    </span>
+                    <span className="buff-effect">
+                      {buff.bonus > 0 ? '+' : ''}{buff.bonus} {buff.stat.toUpperCase()}
+                    </span>
+                    <span className="buff-duration">
+                      ({buff.duration} {buff.duration === 1 ? 'turn' : 'turns'})
+                    </span>
+                  </div>
+                ))}
+              </div>
+            </div>
+            <div className="combat-divider"></div>
+          </>
+        )}
+        
+        {/* Darkness Warning */}
+        {(() => {
+          const classData = getClassById(character.class);
+          const hasInfravision = classData?.infravision > 0;
+          return !hasInfravision && !adventure.adventure.hasLight;
+        })() && (
+          <>
+            <div className="darkness-warning">
+              <h4>⚠️ Fighting in Darkness</h4>
+              <p>-4 penalty to attack rolls</p>
+              <p className="darkness-hint">Use a torch or cast Light spell!</p>
+            </div>
+            <div className="combat-divider"></div>
+          </>
+        )}
+
         {/* Combat Actions */}
         {combatState === 'playerTurn' && (
           <div className="combat-actions">
@@ -372,17 +443,15 @@ export function CombatUI({ enemy }) {
                 Attack
               </Button>
               
-              {/* Cast Spell Button - only if character has spells */}
-              {character.spells && character.spells.length > 0 && hasSpellsAvailable(character) && (
-                <Button
-                  variant="primary"
-                  icon={<Sparkles />}
-                  onClick={() => setShowSpellMenu(true)}
-                  fullWidth
-                >
-                  Cast Spell
-                </Button>
-              )}
+              {/* Cast Spell Button */}
+              <Button
+                variant="primary"
+                icon={<Sparkles />}
+                onClick={() => setShowSpellMenu(true)}
+                fullWidth
+              >
+                Cast Spell
+              </Button>
               
               <Button
                 variant="secondary"
@@ -409,7 +478,7 @@ export function CombatUI({ enemy }) {
         {showSpellMenu && (
           <SpellMenu
             character={character}
-            onCastSpell={handleCastSpell}
+            onCastSpell={handleCastSpellLocal}
             onClose={() => setShowSpellMenu(false)}
           />
         )}
@@ -421,12 +490,9 @@ export function CombatUI({ enemy }) {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => {
-                console.log('Manual enemy turn trigger');
-                handleEnemyTurn();
-              }}
+              onClick={() => handleEnemyTurn()}
             >
-              [Debug: Skip Enemy Turn]
+              [Skip Enemy Turn]
             </Button>
           </div>
         )}

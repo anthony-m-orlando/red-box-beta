@@ -60,9 +60,12 @@ export function SpellMenu({ character, onCastSpell, onClose }) {
 
         {/* Spell List */}
         <div className="spell-list">
-          {character.spells.length === 0 ? (
+          {!character.spells || character.spells.length === 0 ? (
             <div className="no-spells">
               <p>No spells prepared!</p>
+              <p style={{ fontSize: '0.875rem', marginTop: '8px', color: '#666' }}>
+                Spells are selected during character creation.
+              </p>
             </div>
           ) : (
             character.spells.map(spellId => {

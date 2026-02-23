@@ -56,6 +56,9 @@ const initialState = {
   spellSlots: { 1: 0, 2: 0, 3: 0 }, // Max spell slots by level
   spellSlotsUsed: { 1: 0, 2: 0, 3: 0 }, // Used spell slots by level
   
+  // Active buffs/effects
+  activeBuffs: [], // Array of { spellId, stat, bonus, duration, turnApplied }
+  
   // Progress
   isCreated: false,
   creationStep: 1 // 1: Abilities, 2: Class, 3: Alignment, 4: Spells (if caster) / Skip to 5, 5: Finalize
@@ -122,6 +125,38 @@ function characterReducer(state, action) {
             state.spellSlots[level] || 0
           )
         }
+      };
+    }
+    
+    case 'ADD_BUFF': {
+      const buff = action.payload;
+      return {
+        ...state,
+        activeBuffs: [...state.activeBuffs, buff]
+      };
+    }
+    
+    case 'DECREMENT_BUFF_DURATIONS': {
+      return {
+        ...state,
+        activeBuffs: state.activeBuffs
+          .map(buff => ({ ...buff, duration: buff.duration - 1 }))
+          .filter(buff => buff.duration > 0)
+      };
+    }
+    
+    case 'REMOVE_BUFF': {
+      const buffId = action.payload;
+      return {
+        ...state,
+        activeBuffs: state.activeBuffs.filter(buff => buff.spellId !== buffId)
+      };
+    }
+    
+    case 'CLEAR_BUFFS': {
+      return {
+        ...state,
+        activeBuffs: []
       };
     }
     
@@ -316,6 +351,10 @@ export function CharacterProvider({ children }) {
     
     // Spell actions
     useSpellSlot: (level) => dispatch({ type: 'USE_SPELL_SLOT', payload: { level } }),
+    addBuff: (buff) => dispatch({ type: 'ADD_BUFF', payload: buff }),
+    decrementBuffDurations: () => dispatch({ type: 'DECREMENT_BUFF_DURATIONS' }),
+    removeBuff: (spellId) => dispatch({ type: 'REMOVE_BUFF', payload: spellId }),
+    clearBuffs: () => dispatch({ type: 'CLEAR_BUFFS' }),
     rest: () => dispatch({ type: 'REST' }),
     
     // Combat actions

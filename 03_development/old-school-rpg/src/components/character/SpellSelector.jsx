@@ -15,11 +15,14 @@ export function SpellSelector() {
   const [selectedSpells, setSelectedSpells] = useState([]);
   const [expandedSpell, setExpandedSpell] = useState(null);
 
+  // Get class name (handle both string and object formats)
+  const className = typeof character.class === 'string' ? character.class : character.class?.id;
+  
   // Get available spells for this class
-  const availableSpells = getSpellsForClass(character.class, 1);
+  const availableSpells = getSpellsForClass(className, 1);
   
   // Get number of spells they can select
-  const spellSlots = getSpellSlotsForClass(character.class, 1);
+  const spellSlots = getSpellSlotsForClass(className, 1);
   const maxSpells = spellSlots[1] || 1; // Level 1 spell slots
 
   const handleSpellToggle = (spellId) => {
@@ -33,7 +36,8 @@ export function SpellSelector() {
   };
 
   const handleConfirm = () => {
-    setSpells(selectedSpells);
+    // Pass both spell IDs and spell slots to context
+    setSpells(selectedSpells, spellSlots);
   };
 
   const canConfirm = selectedSpells.length === maxSpells;
@@ -43,7 +47,7 @@ export function SpellSelector() {
       <div className="selector-header">
         <h1>Choose Your Spells</h1>
         <p className="flavor-text">
-          As a {character.class}, you can prepare spells from your sacred texts or spellbook.
+          As a {className}, you can prepare spells from your sacred texts or spellbook.
           Choose {maxSpells} {maxSpells === 1 ? 'spell' : 'spells'} to prepare for your adventure.
         </p>
         

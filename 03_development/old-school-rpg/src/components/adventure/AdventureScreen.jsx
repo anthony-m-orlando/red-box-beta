@@ -15,9 +15,10 @@ import './AdventureScreen.css';
  */
 export function AdventureScreen() {
   const navigate = useNavigate();
-  const { character } = useCharacter();
-  const { adventure, getCurrentRoom, addNarration } = useAdventure();
+  const { character, rest: restoreCharacter } = useCharacter();
+  const { adventure, getCurrentRoom, addNarration, resetAdventure } = useAdventure();
   const hasInitialized = useRef(false);
+  const characterIdRef = useRef(null);
   
   // Check if player has a character
   useEffect(() => {
@@ -25,6 +26,19 @@ export function AdventureScreen() {
       navigate('/character/create');
     }
   }, [character.isCreated, navigate]);
+  
+  // Reset adventure when entering with a NEW or DIFFERENT character
+  useEffect(() => {
+    if (character.isCreated) {
+      // If this is a different character than last time, reset everything
+      if (characterIdRef.current !== character.name) {
+        characterIdRef.current = character.name;
+        resetAdventure();
+        restoreCharacter(); // Restore character to full HP and spells
+        hasInitialized.current = false;
+      }
+    }
+  }, [character.isCreated, character.name, resetAdventure, restoreCharacter]);
   
   // Add initial narration ONCE when entering a fresh adventure
   useEffect(() => {
@@ -37,7 +51,7 @@ export function AdventureScreen() {
         hasInitialized.current = true;
       }
     }
-  }, []); // Empty deps - only run once on mount
+  }, [adventure.narrationHistory.length, character.isCreated, getCurrentRoom, addNarration]); // Add deps
   
   // Check for victory or defeat
   if (adventure.isVictorious) {

@@ -92,7 +92,22 @@ In the dim light, you see passages leading north and south.`,
         monsters: [],
         npcs: [],
         treasure: [],
-        traps: []
+        traps: [
+          {
+            id: 'pit_trap',
+            type: 'pit',
+            detected: false,
+            triggered: false,
+            damage: '1d6',
+            saveType: 'death', // Death Ray save
+            description: 'A concealed pit trap!',
+            detectChance: {
+              dwarf: 1.0, // Automatic detection for dwarves
+              thief: 1.0, // Automatic detection for thieves
+              default: 1/6 // 1 in 6 for others
+            }
+          }
+        ]
       },
       state: 'unexplored'
     },
@@ -249,15 +264,15 @@ But wait! A bizarre creature scuttles toward you—a RUST MONSTER! Its antennae 
       id: 'rust_monster_1',
       name: 'Rust Monster',
       type: 'rust_monster',
-      hp: { current: 1, max: 10 }, // Wounded! Only 1 HP left
+      hp: { current: 10, max: 10 }, // Full health now that players can rest
       ac: 2,
       thac0: 19,
       damage: '0', // Doesn't do HP damage, ruins metal
       xp: 50,
       morale: 12,
-      description: 'A wounded rust monster with armadillo-like plating and long, feathery antennae. It appears badly injured.',
-      tactics: 'The rust monster, already near death, desperately tries to survive.',
-      defeatedText: 'The wounded rust monster collapses! The treasure chest is safe!',
+      description: 'A rust monster with armadillo-like plating and long, feathery antennae.',
+      tactics: 'The rust monster seeks metal to corrode.',
+      defeatedText: 'The rust monster collapses! The treasure chest is safe!',
       specialAbilities: [
         {
           id: 'rust_metal',

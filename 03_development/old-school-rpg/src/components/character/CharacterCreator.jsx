@@ -22,23 +22,16 @@ export function CharacterCreator() {
   const { character, resetCharacter } = useCharacter();
   const navigate = useNavigate();
   const currentStep = character.creationStep;
-  const [hasCheckedReset, setHasCheckedReset] = useState(false);
   
   // Check if current class can cast spells
   const isSpellcaster = character.class && canCastSpells(character.class);
 
-  // Reset character when component mounts if we're creating a new character
+  // Reset character immediately if entering with a completed character
   useEffect(() => {
-    if (!hasCheckedReset) {
-      // Check if we entered this page with intent to create NEW character
-      // If character is already created (isCreated = true), reset it
-      if (character.isCreated) {
-        console.log('CharacterCreator: Resetting completed character for new creation');
-        resetCharacter();
-      }
-      setHasCheckedReset(true);
+    if (character.isCreated) {
+      resetCharacter();
     }
-  }, [character.isCreated, hasCheckedReset, resetCharacter]);
+  }, []); // Empty deps - run once on mount
 
   // Progress indicator
   const steps = [
@@ -78,10 +71,10 @@ export function CharacterCreator() {
         
         {/* Step 4: Spell Selection (only for spellcasters) or skip to finalization */}
         {currentStep === 4 && isSpellcaster && <SpellSelector />}
-        {currentStep === 4 && !isSpellcaster && <CharacterFinalization />}
+        {currentStep === 4 && !isSpellcaster && !character.isCreated && <CharacterFinalization />}
         
         {/* Step 5: Finalization */}
-        {currentStep === 5 && <CharacterFinalization />}
+        {currentStep === 5 && !character.isCreated && <CharacterFinalization />}
       </div>
 
       {/* Back to Home Button */}

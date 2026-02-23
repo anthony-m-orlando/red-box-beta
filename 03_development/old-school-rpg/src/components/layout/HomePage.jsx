@@ -37,10 +37,9 @@ export const HomePage = () => {
       id: 'continue',
       icon: <BookOpen size={48} />,
       title: 'Continue Adventure',
-      description: 'Resume your quest from where you left off',
-      action: () => navigate('/adventure'),
-      color: 'var(--ink-blue)',
-      disabled: !hasExistingSave() // Check if save exists
+      description: 'Choose your quest and embark on adventure',
+      action: () => navigate('/adventure/select'),
+      color: 'var(--ink-blue)'
     },
     {
       id: 'dice-tools',

@@ -1,0 +1,221 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>The Old School RPG - Red Trapper Keeper</title>
+    <link href="https://fonts.googleapis.com/css2?family=Indie+Flower&family=Permanent+Marker&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --binder-red: #d32f2f; 
+            --red-box-crimson: #be1e2d; /* Matched to RedBox.jpg */
+            --paper-white: #fdfdfd;
+            --ink-blue: #003399;
+            --ink-black: #1a1a1b;
+            --margin-pink: #ffadad;
+            --rule-blue: #add8e6;
+            --tape-color: rgba(255, 255, 200, 0.4);
+        }
+
+        body {
+            background-color: #1a1a1a;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            margin: 0;
+            font-family: 'Indie Flower', cursive;
+        }
+
+        .trapper-keeper {
+            width: 1000px;
+            height: 750px;
+            background-color: var(--binder-red);
+            background-image: radial-gradient(circle, rgba(255,255,255,0.08) 1px, transparent 1px);
+            background-size: 4px 4px;
+            border-radius: 25px;
+            box-shadow: 0 40px 80px rgba(0,0,0,0.8);
+            display: flex;
+            padding: 20px;
+            position: relative;
+            border: 5px solid #8b0000;
+        }
+
+        .spine {
+            width: 50px;
+            background: linear-gradient(to right, #000, #333, #000);
+            margin-right: 20px;
+            border-radius: 8px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-around;
+            align-items: center;
+            padding: 80px 0;
+            box-shadow: inset 0 0 15px #000;
+        }
+
+        .ring {
+            width: 32px;
+            height: 32px;
+            border: 5px solid #95a5a6;
+            border-radius: 50%;
+            box-shadow: 2px 2px 5px #000;
+        }
+
+        .page-content {
+            flex-grow: 1;
+            background-color: var(--paper-white);
+            background-image: 
+                linear-gradient(90deg, transparent 59px, var(--margin-pink) 59px, var(--margin-pink) 61px, transparent 61px),
+                linear-gradient(var(--rule-blue) 1px, transparent 1px);
+            background-size: 100% 1.5rem;
+            border-radius: 5px;
+            position: relative;
+            padding: 40px 40px 40px 90px;
+            overflow-y: auto;
+            box-shadow: 5px 5px 15px rgba(0,0,0,0.3);
+            transition: all 0.3s ease;
+        }
+
+        /* Home Tab Specific Styling (Red Box Emulation) */
+        .page-content.home-active {
+            background-color: var(--red-box-crimson) !important;
+            background-image: none !important; /* Removes looseleaf lines */
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            overflow: hidden;
+        }
+
+        .cover-art {
+            max-width: 85%;
+            max-height: 85%;
+            border: 12px solid #000; /* Mimics the black frame in RedBox.jpg */
+            box-shadow: 0 0 50px rgba(0,0,0,0.5);
+        }
+
+        /* Existing Grid Styles */
+        .character-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(140px, 1fr));
+            gap: 25px;
+            margin-top: 20px;
+        }
+
+        .photo-card {
+            background: white;
+            padding: 10px 10px 30px 10px;
+            box-shadow: 2px 4px 10px rgba(0,0,0,0.2);
+            border: 1px solid #ddd;
+            position: relative;
+            transform: rotate(-2deg);
+        }
+
+        .photo-card img { width: 100%; aspect-ratio: 1/1; object-fit: cover; border: 1px solid #999; }
+        .photo-label { text-align: center; margin-top: 10px; font-size: 14px; color: var(--ink-blue); }
+        .tape { position: absolute; width: 50px; height: 20px; background: var(--tape-color); top: -10px; left: 50%; transform: translateX(-50%); }
+
+        /* Tabs */
+        .tabs-container {
+            position: absolute;
+            right: -45px;
+            top: 60px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .tab {
+            width: 55px;
+            height: 100px;
+            writing-mode: vertical-rl;
+            text-align: center;
+            color: white;
+            font-weight: bold;
+            font-family: sans-serif;
+            text-transform: uppercase;
+            font-size: 12px;
+            border-radius: 0 12px 12px 0;
+            cursor: pointer;
+            box-shadow: 4px 0 8px rgba(0,0,0,0.3);
+            transition: transform 0.2s;
+        }
+
+        .tab.active { transform: translateX(10px); width: 60px; filter: brightness(1.2); }
+
+        .tab-home { background-color: #000000; } /* Black tab for the Home/Cover */
+        .tab-chars { background-color: #e74c3c; }
+        .tab-maps { background-color: #27ae60; }
+        .tab-log { background-color: #f39c12; color: #000; }
+        .tab-bestiary { background-color: #8e44ad; }
+
+        .section { display: none; }
+        .section.active { display: block; }
+        h1 { font-family: 'Permanent Marker', cursive; color: var(--ink-blue); border-bottom: 2px solid var(--margin-pink); }
+    </style>
+</head>
+<body>
+
+<div class="trapper-keeper">
+    <div class="spine">
+        <div class="ring"></div><div class="ring"></div><div class="ring"></div>
+    </div>
+
+    <div id="mainPage" class="page-content home-active">
+        
+        <div id="home" class="section active">
+            <img src="cover.jpg" alt="D&D Red Box Cover" class="cover-art">
+        </div>
+
+        <div id="chars" class="section">
+            <h1>My Adventurers</h1>
+            <div class="character-grid">
+                <script>
+                    for(let i=1; i<=8; i++) {
+                        document.write(`
+                            <div class="photo-card">
+                                <div class="tape"></div>
+                                <img src="character${i}.jpg" alt="Char">
+                                <div class="photo-label">Character #${i}</div>
+                            </div>
+                        `);
+                    }
+                </script>
+            </div>
+        </div>
+
+        <div id="maps" class="section"><h1>Dungeon Maps</h1><p>Select a map...</p></div>
+        <div id="log" class="section"><h1>Adventure Journal</h1><p>Day 1: Arrived in Breinigsville...</p></div>
+        <div id="bestiary" class="section"><h1>Monster Manual</h1><p>Encountered so far...</p></div>
+    </div>
+
+    <div class="tabs-container">
+        <div class="tab tab-home active" onclick="switchTab('home', this)">Home</div>
+        <div class="tab tab-chars" onclick="switchTab('chars', this)">Chars</div>
+        <div class="tab tab-maps" onclick="switchTab('maps', this)">Maps</div>
+        <div class="tab tab-log" onclick="switchTab('log', this)">Journal</div>
+        <div class="tab tab-bestiary" onclick="switchTab('bestiary', this)">Bestiary</div>
+    </div>
+</div>
+
+<script>
+    function switchTab(id, el) {
+        const page = document.getElementById('mainPage');
+        document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+        document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+        
+        document.getElementById(id).classList.add('active');
+        el.classList.add('active');
+
+        // Toggle the Red Box background vs Looseleaf background
+        if (id === 'home') {
+            page.classList.add('home-active');
+        } else {
+            page.classList.remove('home-active');
+        }
+    }
+</script>
+
+</body>
+</html>

@@ -4,7 +4,7 @@ import { tutorialAdventure, getTutorialRoom, getTutorialMonster, checkTutorialVi
 /**
  * AdventureContext - Global adventure state
  */
-const AdventureContext = createContext();
+const AdventureContext = createContext(undefined);
 
 /**
  * Initial adventure state
@@ -13,6 +13,7 @@ const initialState = {
   // Current adventure
   adventureId: 'tutorial',
   currentRoomId: 'tutorial_entrance',
+  previousRoomId: null, // Track where player came from for fleeing
   
   // Room states
   roomStates: {
@@ -45,6 +46,11 @@ const initialState = {
   
   // Rest tracking
   hasRested: false, // Can only rest once per adventure
+  
+  // Light tracking
+  hasLight: false, // Whether character has active light source
+  lightSource: null, // 'torch' | 'lantern' | 'spell' | null
+  lightDuration: 0, // Turns remaining
 };
 
 /**
@@ -73,6 +79,7 @@ function adventureReducer(state, action) {
       
       return {
         ...state,
+        previousRoomId: state.currentRoomId, // Track where we came from
         currentRoomId: roomId,
         visitedRooms: newVisited,
         roomStates: newRoomStates,
@@ -150,8 +157,10 @@ function adventureReducer(state, action) {
     }
     
     case 'ADD_NARRATION': {
+      // Generate unique ID using timestamp + length to avoid collisions
+      const uniqueId = `${Date.now()}-${state.narrationHistory.length}`;
       const entry = {
-        id: Date.now(),
+        id: uniqueId,
         timestamp: Date.now(),
         ...action.payload
       };
@@ -184,6 +193,34 @@ function adventureReducer(state, action) {
       };
     }
     
+    case 'LIGHT_TORCH': {
+      return {
+        ...state,
+        hasLight: true,
+        lightSource: 'torch',
+        lightDuration: 6 // 6 turns for a torch
+      };
+    }
+    
+    case 'DECREMENT_LIGHT': {
+      const newDuration = Math.max(0, state.lightDuration - 1);
+      return {
+        ...state,
+        lightDuration: newDuration,
+        hasLight: newDuration > 0,
+        lightSource: newDuration > 0 ? state.lightSource : null
+      };
+    }
+    
+    case 'EXTINGUISH_LIGHT': {
+      return {
+        ...state,
+        hasLight: false,
+        lightSource: null,
+        lightDuration: 0
+      };
+    }
+    
     case 'RESET_ADVENTURE': {
       return initialState;
     }
@@ -209,7 +246,8 @@ export function AdventureProvider({ children }) {
   // Auto-save to localStorage on state changes
   useEffect(() => {
     try {
-      localStorage.setItem('rpg-adventure', JSON.stringify(state));
+      const stateToSave = { ...state, version: '1.0' };
+      localStorage.setItem('rpg-adventure', JSON.stringify(stateToSave));
     } catch (error) {
       console.error('Failed to save adventure:', error);
     }
@@ -221,10 +259,18 @@ export function AdventureProvider({ children }) {
       const saved = localStorage.getItem('rpg-adventure');
       if (saved) {
         const adventureState = JSON.parse(saved);
+        // Check if saved data is compatible
+        if (!adventureState.version || adventureState.version !== '1.0') {
+          console.log('Resetting adventure due to version mismatch');
+          localStorage.removeItem('rpg-adventure');
+          return;
+        }
         dispatch({ type: 'LOAD_ADVENTURE', payload: adventureState });
       }
     } catch (error) {
       console.error('Failed to load adventure:', error);
+      // Clear corrupted data
+      localStorage.removeItem('rpg-adventure');
     }
   }, []);
   
@@ -313,6 +359,11 @@ export function AdventureProvider({ children }) {
     setDefeat: () => dispatch({ type: 'SET_DEFEAT' }),
     resetAdventure: () => dispatch({ type: 'RESET_ADVENTURE' }),
     rest: () => dispatch({ type: 'REST' }),
+    
+    // Light management
+    lightTorch: () => dispatch({ type: 'LIGHT_TORCH' }),
+    decrementLight: () => dispatch({ type: 'DECREMENT_LIGHT' }),
+    extinguishLight: () => dispatch({ type: 'EXTINGUISH_LIGHT' }),
     
     // Helpers
     getCurrentRoom: () => getTutorialRoom(state.currentRoomId),

@@ -5,6 +5,7 @@ import { AdventureProvider } from './contexts/AdventureContext';
 import HomePage from './components/layout/HomePage';
 import CharacterCreator from './components/character/CharacterCreator';
 import CharacterManager from './components/character/CharacterManager';
+import AdventureSelection from './components/adventure/AdventureSelection';
 import AdventureScreen from './components/adventure/AdventureScreen';
 import DiceRoller from './components/tools/DiceRoller';
 import Bestiary from './components/tools/Bestiary';
@@ -27,6 +28,7 @@ function App() {
             <Route path="/character/manage" element={<CharacterManager />} />
             
             {/* Adventure */}
+            <Route path="/adventure/select" element={<AdventureSelection />} />
             <Route path="/adventure" element={<AdventureScreen />} />
             
             {/* Tools */}

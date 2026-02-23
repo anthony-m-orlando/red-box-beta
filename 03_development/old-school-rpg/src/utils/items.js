@@ -348,6 +348,19 @@ export function getStartingItems(className) {
         usableIn: ['exploration']
       },
       {
+        id: 'torch',
+        name: 'Torch',
+        type: 'consumable',
+        weight: 1,
+        quantity: 5,
+        effect: {
+          type: 'light',
+          duration: '1 hour',
+          narrative: 'You light a torch. Flickering flames cast dancing shadows on the walls.'
+        },
+        usableIn: ['exploration']
+      },
+      {
         id: 'lantern',
         name: 'Lantern',
         type: 'tool',
@@ -383,6 +396,19 @@ export function getStartingItems(className) {
         effect: {
           type: 'utility',
           narrative: 'You coil the rope. Useful for climbing, but not much use here right now.'
+        },
+        usableIn: ['exploration']
+      },
+      {
+        id: 'torch',
+        name: 'Torch',
+        type: 'consumable',
+        weight: 1,
+        quantity: 5,
+        effect: {
+          type: 'light',
+          duration: '1 hour',
+          narrative: 'You light a torch. Flickering flames cast dancing shadows on the walls.'
         },
         usableIn: ['exploration']
       }
@@ -455,6 +481,19 @@ export function getStartingItems(className) {
           narrative: 'You drink the potion and feel your wounds close. The liquid tastes of honey and herbs.'
         },
         usableIn: ['exploration', 'combat']
+      },
+      {
+        id: 'torch',
+        name: 'Torch',
+        type: 'consumable',
+        weight: 1,
+        quantity: 6,
+        effect: {
+          type: 'light',
+          duration: '1 hour',
+          narrative: 'You light a torch. Flickering flames cast dancing shadows on the walls.'
+        },
+        usableIn: ['exploration']
       },
       {
         id: 'sling_stones',

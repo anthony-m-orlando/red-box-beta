@@ -93,13 +93,23 @@ export function ClassSelector() {
 
       {/* Navigation */}
       <div className="selector-actions">
-        <Button
-          variant="secondary"
-          icon={<ArrowLeft />}
-          onClick={handleBack}
-        >
-          Back to Abilities
-        </Button>
+        {!showDetails ? (
+          <Button
+            variant="secondary"
+            icon={<ArrowLeft />}
+            onClick={handleBack}
+          >
+            Back to Abilities
+          </Button>
+        ) : (
+          <Button
+            variant="secondary"
+            icon={<ArrowLeft />}
+            onClick={() => setShowDetails(false)}
+          >
+            Back to Classes
+          </Button>
+        )}
       </div>
     </div>
   );

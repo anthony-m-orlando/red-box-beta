@@ -209,7 +209,7 @@ describe('Item Utilities', () => {
         const items = getStartingItems(className);
         expect(items.some(i => i.id === 'backpack')).toBe(true);
         expect(items.some(i => i.id === 'waterskin')).toBe(true);
-        expect(items.some(i => i.id === 'rations')).toBe(true);
+        expect(items.some(i => i.id === 'ration')).toBe(true); // Changed from 'rations' to 'ration'
       });
     });
   });
