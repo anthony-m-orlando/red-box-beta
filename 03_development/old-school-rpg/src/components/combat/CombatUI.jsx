@@ -2,10 +2,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { Swords, Shield, AlertTriangle, Sparkles } from 'lucide-react';
 import { useCharacter } from '../../contexts/CharacterContext';
 import { useAdventure } from '../../contexts/AdventureContext';
-import { getClassById } from '../../data/classes';
 import { rollAttack, rollDamage, rollInitiative, checkMorale, applyStrengthDamage, getStrengthAttackBonus } from '../../utils/combat';
-import soundManager from '../../utils/sound';
-import handleCastSpell from '../../utils/handleCastSpell';
 import { applySpellEffect, hasSpellsAvailable } from '../../utils/spells';
 import { generateTreasure, formatTreasureMessage } from '../../utils/treasure';
 import { getSpell } from '../../data/spells';
@@ -71,6 +68,7 @@ export function CombatUI({ enemy }) {
   // Auto-execute enemy turn
   useEffect(() => {
     if (combatState === 'enemyTurn' && enemyHP > 0) {
+      console.log('Auto-triggering enemy turn via useEffect');
       const timer = setTimeout(() => {
         handleEnemyTurn();
       }, 1500);
@@ -105,9 +103,10 @@ export function CombatUI({ enemy }) {
   };
 
   const handlePlayerAttack = () => {
+    console.log('Player attack - combat state:', combatState);
+    
     // Check for darkness penalty
-    const classData = getClassById(character.class);
-    const hasInfravision = classData?.infravision > 0;
+    const hasInfravision = character.class?.infravision > 0;
     const hasLight = adventure.adventure.hasLight;
     const darknessPenalty = (!hasInfravision && !hasLight) ? -4 : 0;
     
@@ -124,9 +123,6 @@ export function CombatUI({ enemy }) {
       // Roll damage
       let damage = rollDamage('1d8'); // Basic sword damage
       damage = applyStrengthDamage(damage, character.abilities.strength);
-      
-      // Play hit sound
-      soundManager.play('hit');
       
       if (attackRoll.critical) {
         damage = damage * 2;
@@ -147,9 +143,6 @@ export function CombatUI({ enemy }) {
       // Add to narration
       addNarration('combat_action', `You hit the ${enemy.name} for ${damage} damage!`, { emphasis: true });
     } else {
-      // Play miss sound
-      soundManager.play('miss');
-      
       if (attackRoll.fumble) {
         addLogEntry(`💥 FUMBLE! Your attack goes wild!`);
         addNarration('combat_action', 'Your attack misses wildly!');
@@ -201,40 +194,134 @@ export function CombatUI({ enemy }) {
     }
   };
 
-  const handleCastSpellLocal = (spellId) => {
-    // Call shared handleCastSpell with combat context
-    handleCastSpell(spellId, {
-      character,
-      enemy,
-      enemyHP,
-      setEnemyHP,
-      enemyConditions,
-      setEnemyConditions,
-      round,
-      adventure,
-      addLogEntry,
-      addNarration,
-      heal,
-      addBuff,
-      useSpellSlot,
-      setCombatState,
-      setShowSpellMenu
-    });
+  const handleCastSpell = (spellId) => {
+    console.log('Casting spell:', spellId);
+    
+    const spell = getSpell(spellId);
+    if (!spell) {
+      console.error('Spell not found:', spellId);
+      return;
+    }
+    
+    // Close spell menu
+    setShowSpellMenu(false);
+    
+    // Determine target based on spell type
+    const spellType = spell.implementation.type;
+    const target = (spellType === 'healing' || spellType === 'buff') 
+      ? character  // Self-target for healing/buffs
+      : { hp: { current: enemyHP, max: enemy.hp.max }, ...enemy }; // Enemy for damage
+    
+    // Apply spell effect
+    const result = applySpellEffect(spell, character, target, 'combat');
+    
+    // Log spell cast
+    addLogEntry(`✨ You cast ${spell.name}!`);
+    addNarration('combat_action', `You cast ${spell.name}!`, { emphasis: true });
+    
+    // Apply effects based on type
+    switch (result.type) {
+      case 'healing':
+        heal(result.healAmount);
+        addLogEntry(`💚 ${spell.name} heals ${result.healAmount} HP!`);
+        addNarration('combat_action', `${spell.name} restores ${result.healAmount} hit points!`);
+        break;
+        
+      case 'damage':
+        setEnemyHP(result.newHP);
+        addLogEntry(`⚡ ${spell.name} deals ${result.damage} damage!`);
+        addNarration('combat_action', `${spell.name} strikes for ${result.damage} damage!`, { emphasis: true });
+        break;
+        
+      case 'buff':
+        // Apply buff to character
+        const buff = {
+          spellId: spell.id,
+          stat: result.stat,
+          bonus: result.bonus,
+          duration: result.duration,
+          turnApplied: round
+        };
+        addBuff(buff);
+        addLogEntry(`🛡️ ${spell.name} grants ${result.bonus > 0 ? '+' : ''}${result.bonus} ${result.stat.toUpperCase()}!`);
+        addNarration('combat_action', result.message);
+        break;
+      
+      case 'condition':
+        // Handle Sleep spell
+        if (spell.id === 'sleep') {
+          // Roll HD affected
+          const hdRoll1 = Math.floor(Math.random() * 8) + 1;
+          const hdRoll2 = Math.floor(Math.random() * 8) + 1;
+          const hdAffected = hdRoll1 + hdRoll2;
+          
+          // Get enemy HD (parse "1" from "1 HD" or "1-1" etc)
+          const enemyHD = parseInt(enemy.hitDice) || 1;
+          
+          if (enemyHD <= hdAffected) {
+            // Enemy falls asleep!
+            setEnemyConditions([...enemyConditions, 'asleep']);
+            addLogEntry(`💤 The ${enemy.name} falls into a deep slumber!`);
+            addNarration('combat_action', `${spell.name} causes the ${enemy.name} to collapse into magical sleep! (${hdAffected} HD affected)`);
+          } else {
+            // Too many HD to affect
+            addLogEntry(`✨ ${spell.name} fails to affect the ${enemy.name}.`);
+            addNarration('combat_action', `The ${enemy.name} is too powerful to be affected by ${spell.name}. (Need ${enemyHD} HD, rolled ${hdAffected})`);
+          }
+        }
+        break;
+        
+      case 'utility':
+        // Special handling for Detect Evil
+        if (spell.id === 'detect_evil') {
+          if (enemy && enemy.alignment === 'Chaotic') {
+            addLogEntry(`👁️ You sense evil emanating from the ${enemy.name}!`);
+            addNarration('dm_note', `Your divine senses detect a malevolent presence - the ${enemy.name} radiates chaotic evil!`);
+          } else {
+            addLogEntry(`✨ You sense no evil nearby.`);
+            addNarration('dm_note', 'Your senses detect no evil in the immediate area.');
+          }
+        } else if (spell.id === 'light') {
+          // Light spell creates magical illumination
+          adventure.lightTorch(); // Use existing light system but with spell duration
+          addLogEntry(`✨ Magical light fills the area!`);
+          addNarration('combat_action', 'A soft, steady radiance springs forth from your hand, illuminating the darkness with magical light.');
+        } else {
+          addLogEntry(`✨ ${result.message}`);
+          addNarration('combat_action', result.message);
+        }
+        break;
+        
+      default:
+        addLogEntry(`✨ ${result.message}`);
+        addNarration('combat_action', result.message);
+    }
+    
+    // Use spell slot
+    useSpellSlot(spell.level);
+    
+    // Enemy turn next
+    setCombatState('enemyTurn');
   };
 
   const handleEnemyTurn = () => {
     // Double-check combat is still active
     if (combatState !== 'enemyTurn') {
+      console.log('Enemy turn skipped - wrong state:', combatState);
       return;
     }
     
     if (enemyHP <= 0) {
+      console.log('Enemy turn skipped - enemy defeated');
       return;
     }
     
     if (character.hp.current <= 0) {
+      console.log('Enemy turn skipped - player defeated');
       return;
     }
+    
+    console.log('Enemy turn executing...');
     
     // Check if enemy is asleep
     if (enemyConditions.includes('asleep')) {
@@ -293,7 +380,6 @@ export function CombatUI({ enemy }) {
 
   const handleVictory = () => {
     setCombatState('victory');
-    soundManager.play('victory'); // Play victory fanfare
     addLogEntry(`🎉 Victory! ${enemy.name} is defeated!`);
     
     // Award XP
@@ -335,7 +421,6 @@ export function CombatUI({ enemy }) {
 
   const handleDefeat = () => {
     setCombatState('defeat');
-    soundManager.play('defeat'); // Play defeat sound
     addLogEntry(`💀 You have been defeated!`);
     addNarration('combat_action', 'You fall unconscious...', { emphasis: true });
     
@@ -414,11 +499,7 @@ export function CombatUI({ enemy }) {
         )}
         
         {/* Darkness Warning */}
-        {(() => {
-          const classData = getClassById(character.class);
-          const hasInfravision = classData?.infravision > 0;
-          return !hasInfravision && !adventure.adventure.hasLight;
-        })() && (
+        {!character.class?.infravision && !adventure.adventure.hasLight && (
           <>
             <div className="darkness-warning">
               <h4>⚠️ Fighting in Darkness</h4>
@@ -443,15 +524,17 @@ export function CombatUI({ enemy }) {
                 Attack
               </Button>
               
-              {/* Cast Spell Button */}
-              <Button
-                variant="primary"
-                icon={<Sparkles />}
-                onClick={() => setShowSpellMenu(true)}
-                fullWidth
-              >
-                Cast Spell
-              </Button>
+              {/* Cast Spell Button - only if character has spells */}
+              {character.spells && character.spells.length > 0 && hasSpellsAvailable(character) && (
+                <Button
+                  variant="primary"
+                  icon={<Sparkles />}
+                  onClick={() => setShowSpellMenu(true)}
+                  fullWidth
+                >
+                  Cast Spell
+                </Button>
+              )}
               
               <Button
                 variant="secondary"
@@ -478,7 +561,7 @@ export function CombatUI({ enemy }) {
         {showSpellMenu && (
           <SpellMenu
             character={character}
-            onCastSpell={handleCastSpellLocal}
+            onCastSpell={handleCastSpell}
             onClose={() => setShowSpellMenu(false)}
           />
         )}
@@ -490,9 +573,12 @@ export function CombatUI({ enemy }) {
             <Button
               variant="ghost"
               size="sm"
-              onClick={() => handleEnemyTurn()}
+              onClick={() => {
+                console.log('Manual enemy turn trigger');
+                handleEnemyTurn();
+              }}
             >
-              [Skip Enemy Turn]
+              [Debug: Skip Enemy Turn]
             </Button>
           </div>
         )}

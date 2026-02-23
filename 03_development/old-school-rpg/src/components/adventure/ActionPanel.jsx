@@ -1,32 +1,25 @@
 import React, { useState } from 'react';
-import { Sword, Scroll, Package, ArrowRight, Bed, Sparkles } from 'lucide-react';
+import { Sword, Scroll, Package, ArrowRight, Bed } from 'lucide-react';
 import { useCharacter } from '../../contexts/CharacterContext';
 import { useAdventure } from '../../contexts/AdventureContext';
 import { getTutorialMonster } from '../../data/tutorialAdventure';
-import { getClassById } from '../../data/classes';
 import { applyItemEffect } from '../../utils/items';
 import { calculateModifier } from '../../utils/calculations';
 import { rollDice } from '../../utils/dice';
-import { hasSpellsAvailable } from '../../utils/spells';
-import handleCastSpell from '../../utils/handleCastSpell';
 import Button from '../common/Button';
 import PaperContainer from '../common/PaperContainer';
 import CombatUI from '../combat/CombatUI';
 import ItemMenu from './ItemMenu';
-import SpellMenu from '../combat/SpellMenu';
-import soundManager from '../../utils/sound';
 import './ActionPanel.css';
 
 /**
  * ActionPanel - Shows current room status and available actions
  */
 export function ActionPanel() {
-  const { character, heal, removeItem, decrementItemQuantity, rest, useSpellSlot, addBuff } = useCharacter();
-  
+  const { character, heal, removeItem, decrementItemQuantity, rest } = useCharacter();
   const adventure = useAdventure();
   const { getCurrentRoom, enterRoom, addNarration } = adventure;
   const [showItemMenu, setShowItemMenu] = useState(false);
-  const [showSpellMenu, setShowSpellMenu] = useState(false);
   
   const currentRoom = getCurrentRoom();
   // Show all exits from the current room (player can see doors/passages)
@@ -41,6 +34,8 @@ export function ActionPanel() {
   
   // Handle item usage
   const handleUseItem = (item) => {
+    console.log('Using item:', item);
+    
     // Close item menu
     setShowItemMenu(false);
     
@@ -80,20 +75,6 @@ export function ActionPanel() {
         removeItem(item.id);
       }
     }
-  };
-  
-  // Handle spell casting in exploration
-  const handleCastSpellLocal = (spellId) => {
-    // Call shared handleCastSpell with exploration context (no enemy)
-    handleCastSpell(spellId, {
-      character,
-      adventure,
-      addNarration,
-      heal,
-      addBuff,
-      useSpellSlot,
-      setShowSpellMenu
-    });
   };
   
   // Handle rest
@@ -258,7 +239,7 @@ export function ActionPanel() {
                       
                       if (!trap.detected) {
                         // Determine detection chance based on class
-                        const className = character.class; // character.class is already the string ID
+                        const className = character.class.id;
                         let detectChance = trap.detectChance.default;
                         
                         if (className === 'dwarf' || className === 'thief') {
@@ -266,8 +247,7 @@ export function ActionPanel() {
                         }
                         
                         // Apply darkness penalty if no light and no infravision
-                        const classData = getClassById(character.class);
-                        const hasInfravision = classData?.infravision > 0;
+                        const hasInfravision = character.class?.infravision > 0;
                         const hasLight = adventure.adventure.hasLight;
                         
                         if (!hasInfravision && !hasLight) {
@@ -316,17 +296,6 @@ export function ActionPanel() {
                   Use Item
                 </Button>
                 
-                {/* Cast Spell Button */}
-                <Button
-                  variant="primary"
-                  size="sm"
-                  icon={<Sparkles />}
-                  fullWidth
-                  onClick={() => setShowSpellMenu(true)}
-                >
-                  Cast Spell
-                </Button>
-                
                 {/* Rest Button - Only in exploration, once per adventure */}
                 {!adventure.adventure.hasRested && (
                   <Button
@@ -343,16 +312,12 @@ export function ActionPanel() {
                 {/* Light Status - Show if light is active */}
                 {adventure.adventure.hasLight && (
                   <div className="light-status">
-                    🔥 Area is Lit ({adventure.adventure.lightDuration} turns)
+                    🔥 Torch lit ({adventure.adventure.lightDuration} turns)
                   </div>
                 )}
                 
                 {/* Darkness Warning - Show if no light and no infravision */}
-                {(() => {
-                  const classData = getClassById(character.class);
-                  const hasInfravision = classData?.infravision > 0;
-                  return !hasInfravision && !adventure.adventure.hasLight;
-                })() && (
+                {!character.class?.infravision && !adventure.adventure.hasLight && (
                   <div className="darkness-warning-exploration">
                     ⚠️ In Darkness (-4 attack, reduced search)
                   </div>
@@ -369,15 +334,6 @@ export function ActionPanel() {
             onUseItem={handleUseItem}
             onClose={() => setShowItemMenu(false)}
             context="exploration"
-          />
-        )}
-        
-        {/* Spell Menu Modal */}
-        {showSpellMenu && (
-          <SpellMenu
-            character={character}
-            onCastSpell={handleCastSpellLocal}
-            onClose={() => setShowSpellMenu(false)}
           />
         )}
         
