@@ -73,7 +73,7 @@ export const HomePage = () => {
             <h1 className="game-title">
               Dungeons & Dragons
             </h1>
-            <p className="subtitle">Basic Rules Set 1</p>
+            <p className="game-title">Basic Set</p>
             <p className="tagline">Solo Adventure Demo</p>
           </div>
         </div>
